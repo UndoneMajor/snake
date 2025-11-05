@@ -125,6 +125,11 @@ socket.on('init', (data) => {
     walls = data.walls;
     mapWidth = data.mapWidth;
     mapHeight = data.mapHeight;
+    
+    const myPlayer = players[myPlayerId];
+    if (myPlayer) {
+        console.log(`Class: ${myPlayer.class}, Speed: ${myPlayer.speed}`);
+    }
 });
 
 socket.on('playerJoined', (player) => {
@@ -189,6 +194,7 @@ socket.on('update', (data) => {
             players[id].ammo = data.players[id].ammo;
             players[id].color = data.players[id].color;
             players[id].class = data.players[id].class;
+            players[id].speed = data.players[id].speed;
         }
     });
 });
@@ -364,7 +370,11 @@ function handleMovement() {
     const angle = player.angle;
 
     if (dx !== 0 || dy !== 0) {
-        const speed = player.speed || 3;
+        const speed = player.speed;
+        if (!speed) {
+            console.log('No speed!', player);
+            return;
+        }
         const newX = player.x + dx * speed;
         const newY = player.y + dy * speed;
         
