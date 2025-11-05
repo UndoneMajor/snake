@@ -75,16 +75,33 @@ const walls = [
   { x: 0, y: MAP_HEIGHT - 20, width: MAP_WIDTH, height: 20 },
   { x: 0, y: 0, width: 20, height: MAP_HEIGHT },
   { x: MAP_WIDTH - 20, y: 0, width: 20, height: MAP_HEIGHT },
-  { x: 400, y: 200, width: 200, height: 40 },
-  { x: 800, y: 400, width: 40, height: 300 },
-  { x: 1200, y: 300, width: 300, height: 40 },
-  { x: 600, y: 800, width: 40, height: 400 },
-  { x: 1400, y: 600, width: 400, height: 40 },
-  { x: 1000, y: 1000, width: 40, height: 300 },
-  { x: 300, y: 1200, width: 500, height: 40 },
-  { x: 1600, y: 800, width: 40, height: 400 },
-  { x: 1800, y: 300, width: 300, height: 40 },
-  { x: 500, y: 1400, width: 600, height: 40 },
+  
+  { x: 200, y: 200, width: 40, height: 400 },
+  { x: 200, y: 200, width: 400, height: 40 },
+  { x: 560, y: 200, width: 40, height: 300 },
+  
+  { x: MAP_WIDTH - 640, y: 200, width: 40, height: 400 },
+  { x: MAP_WIDTH - 640, y: 200, width: 400, height: 40 },
+  { x: MAP_WIDTH - 240, y: 200, width: 40, height: 300 },
+  
+  { x: 200, y: MAP_HEIGHT - 600, width: 40, height: 400 },
+  { x: 200, y: MAP_HEIGHT - 240, width: 400, height: 40 },
+  { x: 560, y: MAP_HEIGHT - 500, width: 40, height: 300 },
+  
+  { x: MAP_WIDTH - 640, y: MAP_HEIGHT - 600, width: 40, height: 400 },
+  { x: MAP_WIDTH - 640, y: MAP_HEIGHT - 240, width: 400, height: 40 },
+  { x: MAP_WIDTH - 240, y: MAP_HEIGHT - 500, width: 40, height: 300 },
+  
+  { x: 800, y: 400, width: 150, height: 150 },
+  { x: 1450, y: 400, width: 150, height: 150 },
+  
+  { x: 800, y: 1250, width: 150, height: 150 },
+  { x: 1450, y: 1250, width: 150, height: 150 },
+  
+  { x: 1050, y: 650, width: 300, height: 40 },
+  { x: 1050, y: 1110, width: 300, height: 40 },
+  { x: 1050, y: 650, width: 40, height: 500 },
+  { x: 1310, y: 650, width: 40, height: 500 },
 ];
 
 const players = {};
@@ -97,17 +114,18 @@ const MAX_BOTS = 5;
 
 const SPAWN_POINTS = [
   { x: 100, y: 100 },
-  { x: 2300, y: 100 },
-  { x: 100, y: 1700 },
-  { x: 2300, y: 1700 },
-  { x: 1200, y: 900 },
-  { x: 200, y: 500 },
-  { x: 2200, y: 500 },
-  { x: 700, y: 150 },
-  { x: 1700, y: 150 },
-  { x: 200, y: 1000 },
-  { x: 2100, y: 1000 },
-  { x: 900, y: 600 }
+  { x: 100, y: 900 },
+  { x: 700, y: 100 },
+  { x: 700, y: 700 },
+  { x: 700, y: 1700 },
+  { x: 400, y: 1700 },
+  
+  { x: MAP_WIDTH - 100, y: 100 },
+  { x: MAP_WIDTH - 100, y: 900 },
+  { x: MAP_WIDTH - 700, y: 100 },
+  { x: MAP_WIDTH - 700, y: 700 },
+  { x: MAP_WIDTH - 700, y: 1700 },
+  { x: MAP_WIDTH - 400, y: 1700 }
 ];
 
 let lastSpawnIndex = 0;

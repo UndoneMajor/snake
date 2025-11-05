@@ -616,38 +616,38 @@ function shoot() {
 }
 
 function draw() {
-    ctx.fillStyle = '#0f0f1e';
+    ctx.fillStyle = '#3a4a2a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     ctx.scale(ZOOM_LEVEL, ZOOM_LEVEL);
     ctx.translate(-camera.x, -camera.y);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    const gridSize = 50;
-    const startX = Math.floor(camera.x / gridSize) * gridSize;
-    const startY = Math.floor(camera.y / gridSize) * gridSize;
-    
-    for (let x = startX; x < camera.x + canvas.width / ZOOM_LEVEL; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, camera.y);
-        ctx.lineTo(x, camera.y + canvas.height / ZOOM_LEVEL);
-        ctx.stroke();
-    }
-    for (let y = startY; y < camera.y + canvas.height / ZOOM_LEVEL; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(camera.x, y);
-        ctx.lineTo(camera.x + canvas.width / ZOOM_LEVEL, y);
-        ctx.stroke();
-    }
-
-    ctx.fillStyle = '#2c3e50';
-    ctx.strokeStyle = '#34495e';
-    ctx.lineWidth = 2;
     walls.forEach(wall => {
+        const isBox = wall.width === 150 && wall.height === 150;
+        
+        if (isBox) {
+            ctx.fillStyle = '#6a5a3a';
+        } else {
+            ctx.fillStyle = '#444';
+        }
         ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
         ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+        
+        if (isBox) {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(wall.x + 10, wall.y + 10, wall.width - 20, wall.height - 20);
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.font = '40px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📦', wall.x + wall.width/2, wall.y + wall.height/2);
+        }
     });
 
     Object.values(powerUps).forEach(powerUp => {
