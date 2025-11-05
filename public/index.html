@@ -72,7 +72,17 @@
                     <div class="stat-title">AMMUNITION</div>
                     <div class="ammo-display">
                         <div class="ammo-icon">▣▣▣</div>
-                        <span id="ammo" class="ammo-count">30</span>
+                        <div class="ammo-numbers">
+                            <span id="ammo" class="ammo-count">30</span>
+                            <span class="ammo-slash">/</span>
+                            <span id="reserve" class="reserve-count">60</span>
+                        </div>
+                    </div>
+                    <div id="reloadIndicator" class="reload-indicator" style="display: none;">
+                        <div class="reload-bar">
+                            <div id="reloadProgress" class="reload-progress"></div>
+                        </div>
+                        <div class="reload-text">RELOADING...</div>
                     </div>
                 </div>
             </div>

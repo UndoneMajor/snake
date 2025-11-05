@@ -89,12 +89,71 @@
     text-shadow: 0 0 10px #ff00ff;
 }
 
+.ammo-display {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ammo-numbers {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
 .ammo-count {
     font-size: 3rem;
     font-weight: 900;
     color: #ff00ff;
     text-shadow: 0 0 20px #ff00ff;
     font-family: 'Orbitron', monospace;
+}
+
+.ammo-slash {
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.reserve-count {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: rgba(255, 0, 255, 0.5);
+    font-family: 'Orbitron', monospace;
+}
+
+.reload-indicator {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 12px 20px;
+    border: 3px solid #ffff00;
+    border-left: 6px solid #ffff00;
+    box-shadow: 0 0 30px rgba(255, 255, 0, 0.6);
+    margin-top: 15px;
+}
+
+.reload-bar {
+    width: 200px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #ffff00;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.reload-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #ffff00, #ff8800);
+    width: 0%;
+    transition: none;
+    box-shadow: 0 0 15px rgba(255, 255, 0, 0.8);
+}
+
+.reload-text {
+    text-align: center;
+    color: #ffff00;
+    font-weight: 900;
+    letter-spacing: 3px;
+    font-size: 0.9rem;
+    text-shadow: 0 0 10px #ffff00;
 }
 
 .network-status {
