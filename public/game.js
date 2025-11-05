@@ -86,7 +86,7 @@ const CLASS_CONFIGS = {
     shotgun: { fireRate: 500, icon: '🔫', reloadTime: 2000 },
     sniper: { fireRate: 700, icon: '🎯', reloadTime: 2500 },
     rifle: { fireRate: 80, icon: '💥', reloadTime: 1500 },
-    pyro: { fireRate: 50, icon: '🔥', reloadTime: 3000, isFlame: true }
+    pyro: { fireRate: 100, icon: '🔥', reloadTime: 3000, isFlame: true }
 };
 
 let isReloading = false;
@@ -561,7 +561,7 @@ function shoot() {
         shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, damage: 35 },
         sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, damage: 20 },
         rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, damage: 15 },
-        pyro: { bulletSpeed: 5, bulletCount: 8, spread: 0.5, damage: 3, flameRange: 150 }
+        pyro: { bulletSpeed: 5, bulletCount: 3, spread: 0.4, damage: 8, flameRange: 150 }
     };
     
     const bulletConfig = serverConfig[myClass];
@@ -588,13 +588,15 @@ function shoot() {
         
         bullets[localBullet.id] = localBullet;
         
-        const hitPlayer = checkInstantHit(localBullet);
-        if (hitPlayer) {
-            socket.emit('clientHit', { 
-                victimId: hitPlayer.id, 
-                bulletAngle: bulletAngle,
-                timestamp: Date.now() - (currentPing / 2)
-            });
+        if (myClass !== 'pyro') {
+            const hitPlayer = checkInstantHit(localBullet);
+            if (hitPlayer) {
+                socket.emit('clientHit', { 
+                    victimId: hitPlayer.id, 
+                    bulletAngle: bulletAngle,
+                    timestamp: Date.now() - (currentPing / 2)
+                });
+            }
         }
     }
 
