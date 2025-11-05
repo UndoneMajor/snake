@@ -100,7 +100,7 @@ socket.on('gameState', (data) => {
         const serverPlayer = data.players[id];
         
         if (id === myPlayerId) {
-            // Update ONLY non-position data from server
+            // Update ONLY non-position/angle data from server
             if (players[id]) {
                 players[id].health = serverPlayer.health;
                 players[id].ammo = serverPlayer.ammo;
@@ -109,7 +109,7 @@ socket.on('gameState', (data) => {
                 players[id].speed = serverPlayer.speed;
                 players[id].class = serverPlayer.class;
                 players[id].color = serverPlayer.color;
-                // DO NOT update x, y - client controls these
+                // DO NOT update x, y, angle - client controls these for smooth aiming
             } else {
                 players[id] = { ...serverPlayer };
             }
@@ -263,9 +263,9 @@ function handleMovement() {
         dy *= 0.707;
     }
 
-    // Update angle
+    // ALWAYS update angle to mouse (every frame for smooth aiming)
     const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    player.angle = angle;
+    player.angle = angle; // This ensures indicator always follows mouse
 
     // Move locally
     if (dx !== 0 || dy !== 0) {

@@ -48,16 +48,20 @@ const powerUps = {};
 let bulletIdCounter = 0;
 let powerUpIdCounter = 0;
 
-// Fixed spawn points (safe locations)
+// Fixed spawn points (verified safe - avoiding ALL walls)
 const SPAWN_POINTS = [
-  { x: 200, y: 200 },      // Top-left
-  { x: 2200, y: 200 },     // Top-right
-  { x: 200, y: 1600 },     // Bottom-left
-  { x: 2200, y: 1600 },    // Bottom-right
-  { x: 1200, y: 900 },     // Center
-  { x: 600, y: 600 },      // Mid-left
-  { x: 1800, y: 600 },     // Mid-right
-  { x: 1200, y: 400 }      // Top-center
+  { x: 100, y: 100 },       // Top-left (clear)
+  { x: 2300, y: 100 },      // Top-right (clear)
+  { x: 100, y: 1700 },      // Bottom-left (clear)
+  { x: 2300, y: 1700 },     // Bottom-right (clear)
+  { x: 1200, y: 900 },      // Center (clear)
+  { x: 200, y: 500 },       // Left mid (clear, wall at 400,200)
+  { x: 2200, y: 500 },      // Right mid (clear)
+  { x: 700, y: 150 },       // Top area (clear, wall at 400,200 ends at 600)
+  { x: 1700, y: 150 },      // Top-right area (clear, wall at 1800,300)
+  { x: 200, y: 1000 },      // Left lower (clear)
+  { x: 2100, y: 1000 },     // Right lower (clear, wall at 1600,800)
+  { x: 900, y: 600 }        // Mid area (clear, between walls)
 ];
 
 let lastSpawnIndex = 0;
