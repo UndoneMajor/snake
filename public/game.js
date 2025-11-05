@@ -135,6 +135,8 @@ socket.on('update', (data) => {
             if (players[id]) {
                 players[id].health = data.players[id].health;
                 players[id].ammo = data.players[id].ammo;
+                players[id].reserve = data.players[id].reserve;
+                players[id].isReloading = data.players[id].isReloading;
                 players[id].kills = data.players[id].kills;
                 players[id].score = data.players[id].score;
                 players[id].speed = data.players[id].speed;
@@ -393,8 +395,9 @@ let localBulletId = 0;
 
 function reload() {
     const player = players[myPlayerId];
-    if (!player || isReloading || !classConfig) return;
-    if (player.ammo === classConfig.maxAmmo || player.reserve <= 0) return;
+    if (!player || !classConfig) return;
+    if (isReloading) return;
+    if (player.ammo >= player.classConfig?.maxAmmo || (player.reserve || 0) <= 0) return;
 
     isReloading = true;
     reloadStartTime = Date.now();
@@ -416,14 +419,18 @@ function reload() {
 }
 
 function shoot() {
+    const player = players[myPlayerId];
     if (!classConfig || isReloading) return;
+    if (!player || player.ammo <= 0) {
+        if (player && player.reserve > 0 && !isReloading) {
+            reload();
+        }
+        return;
+    }
     
     const now = Date.now();
     if (now - lastShot < classConfig.fireRate) return;
     lastShot = now;
-
-    const player = players[myPlayerId];
-    if (!player || player.ammo <= 0) return;
 
     const angle = player.angle;
 
