@@ -23,6 +23,29 @@ const pingIndicator = document.getElementById('pingIndicator');
 const reserveElement = document.getElementById('reserve');
 const reloadIndicator = document.getElementById('reloadIndicator');
 const reloadProgress = document.getElementById('reloadProgress');
+const nameModal = document.getElementById('nameModal');
+const nameInput = document.getElementById('nameInput');
+
+let playerName = localStorage.getItem('playerName') || '';
+
+function submitName() {
+    const name = nameInput.value.trim();
+    if (name.length < 1) {
+        alert('Please enter a name!');
+        return;
+    }
+    playerName = name;
+    localStorage.setItem('playerName', name);
+    nameModal.classList.add('hidden');
+    classModal.classList.remove('hidden');
+}
+
+window.addEventListener('load', () => {
+    if (playerName) {
+        nameInput.value = playerName;
+    }
+    nameModal.classList.remove('hidden');
+});
 
 let lastPingTime = 0;
 let currentPing = 0;
@@ -85,16 +108,12 @@ function collidesWithWall(x, y, size = 30) {
     return false;
 }
 
-window.addEventListener('load', () => {
-    classModal.classList.remove('hidden');
-});
-
 function selectClass(className) {
     myClass = className;
     classConfig = CLASS_CONFIGS[className];
     playerClassElement.textContent = className.charAt(0).toUpperCase() + className.slice(1);
     classModal.classList.add('hidden');
-    socket.emit('selectClass', className);
+    socket.emit('selectClass', { class: className, name: playerName });
 }
 
 socket.on('init', (data) => {
@@ -184,8 +203,10 @@ socket.on('powerUpCollected', (powerUpId) => {
 });
 
 socket.on('youDied', (data) => {
-    const killerClassName = data.killerClass ? data.killerClass.charAt(0).toUpperCase() + data.killerClass.slice(1) : 'Unknown';
-    addKillMessage(`💀 You were eliminated by ${killerClassName}!`);
+    const killer = players[data.killerId];
+    const killerName = killer ? (killer.isBot ? `🤖 ${killer.name}` : killer.name) : 'Unknown';
+    const killerClass = data.killerClass || '';
+    addKillMessage('💀', `${killerName}`, 'eliminated you', killerClass);
     delete players[myPlayerId];
     
     setTimeout(() => {
@@ -197,22 +218,37 @@ socket.on('youDied', (data) => {
 });
 
 socket.on('playerKilled', (data) => {
-    delete players[data.victimId];
+    const killer = players[data.killerId];
+    const victim = players[data.victimId];
     
-    if (data.victimId !== myPlayerId) {
-        addKillMessage(`Player eliminated!`);
+    if (data.victimId !== myPlayerId && killer && victim) {
+        const killerName = killer.isBot ? `🤖 ${killer.name}` : (killer.name || 'Player');
+        const victimName = victim.isBot ? `🤖 ${victim.name}` : (victim.name || 'Player');
+        const weaponIcon = CLASS_CONFIGS[killer.class]?.icon || '💥';
+        addKillMessage(killerName, weaponIcon, victimName, '');
     }
+    
+    delete players[data.victimId];
 });
 
-function addKillMessage(message) {
+function addKillMessage(left, icon, right, extra) {
     const div = document.createElement('div');
     div.className = 'kill-message';
-    div.textContent = message;
+    div.innerHTML = `
+        <span class="kill-left">${left}</span>
+        <span class="kill-icon">${icon}</span>
+        <span class="kill-right">${right}</span>
+        ${extra ? `<span class="kill-extra">${extra}</span>` : ''}
+    `;
     killFeed.appendChild(div);
+    
+    if (killFeed.children.length > 5) {
+        killFeed.removeChild(killFeed.firstChild);
+    }
     
     setTimeout(() => {
         div.remove();
-    }, 3000);
+    }, 5000);
 }
 
 document.addEventListener('keydown', (e) => {
@@ -613,7 +649,7 @@ function updateLeaderboard() {
         const isMe = player.id === myPlayerId;
         const isBot = player.isBot;
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-        const name = isMe ? 'YOU' : isBot ? `🤖 ${player.name}` : 'Player';
+        const name = isMe ? playerName || 'YOU' : isBot ? `🤖 ${player.name}` : (player.name || 'Player');
         
         return `
             <div class="leaderboard-item ${isMe ? 'me' : ''}" style="border-color: ${player.color}">

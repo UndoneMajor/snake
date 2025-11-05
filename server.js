@@ -297,7 +297,9 @@ function collidesWithWall(x, y, size = 10) {
 io.on('connection', (socket) => {
   console.log(`🎮 ${socket.id}`);
 
-  socket.on('selectClass', (playerClass) => {
+  socket.on('selectClass', (data) => {
+    const playerClass = data.class || data;
+    const playerName = data.name || 'Player';
     if (!CLASS_CONFIGS[playerClass]) return;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
@@ -318,7 +320,8 @@ io.on('connection', (socket) => {
       reserve: config.maxReserve,
       class: playerClass,
       classConfig: config,
-      isReloading: false
+      isReloading: false,
+      name: playerName
     };
 
     socket.emit('init', {
