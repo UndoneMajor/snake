@@ -2,6 +2,14 @@ const socket = io();
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Make canvas fullscreen
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
 // UI Elements
 const healthFill = document.getElementById('healthFill');
 const healthText = document.getElementById('healthText');
@@ -493,61 +501,6 @@ function draw() {
 
     // Restore context
     ctx.restore();
-
-    // Draw minimap every 5 frames (12 FPS)
-    if (Math.random() < 0.2) {
-        drawMinimap();
-    }
-}
-
-function drawMinimap() {
-    const minimapSize = 150;
-    const minimapX = canvas.width - minimapSize - 20;
-    const minimapY = 20;
-    const scale = minimapSize / Math.max(mapWidth, mapHeight);
-
-    // Minimap background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
-
-    // Draw walls on minimap
-    ctx.fillStyle = '#555';
-    walls.forEach(wall => {
-        ctx.fillRect(
-            minimapX + wall.x * scale,
-            minimapY + wall.y * scale,
-            wall.width * scale,
-            wall.height * scale
-        );
-    });
-
-    // Draw players on minimap
-    Object.values(players).forEach(player => {
-        const isMe = player.id === myPlayerId;
-        ctx.fillStyle = isMe ? '#FFD700' : player.color;
-        ctx.beginPath();
-        ctx.arc(
-            minimapX + player.x * scale,
-            minimapY + player.y * scale,
-            isMe ? 4 : 3,
-            0,
-            Math.PI * 2
-        );
-        ctx.fill();
-    });
-
-    // Draw viewport rectangle
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(
-        minimapX + camera.x * scale,
-        minimapY + camera.y * scale,
-        canvas.width * scale,
-        canvas.height * scale
-    );
 }
 
 function updateUI() {

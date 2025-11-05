@@ -6,66 +6,72 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #000;
     color: #fff;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
 }
 
-.container {
-    max-width: 1200px;
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+    background: #0f0f1e;
+}
+
+/* In-Game HUD */
+.hud {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
 }
 
-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-h1 {
-    font-size: 3rem;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 0 20px rgba(255, 69, 0, 0.8);
-    color: #ff4500;
-}
-
-.player-stats {
-    display: flex;
-    gap: 2rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 1rem 2rem;
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
-}
-
-.stat {
+.hud-top-left {
+    position: absolute;
+    top: 20px;
+    left: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
+    gap: 15px;
 }
 
-.label {
-    font-size: 0.9rem;
-    opacity: 0.8;
+.hud-top-right {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-end;
 }
 
-.value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #FFD700;
+.hud-bottom-right {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
 }
 
-.health-bar {
-    width: 150px;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.5);
+.hud-health {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 12px 20px;
     border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.health-bar-hud {
+    width: 200px;
+    height: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
     overflow: hidden;
     border: 2px solid rgba(255, 255, 255, 0.3);
 }
@@ -73,81 +79,75 @@ h1 {
 .health-fill {
     height: 100%;
     background: linear-gradient(90deg, #ff4444 0%, #ff8844 100%);
-    transition: width 0.3s ease;
+    transition: width 0.2s ease;
     width: 100%;
 }
 
 #healthText {
-    font-size: 0.9rem;
+    font-size: 1.3rem;
+    font-weight: bold;
     color: #fff;
+    min-width: 60px;
 }
 
-.game-area {
-    position: relative;
+.hud-item {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
     display: flex;
-    flex-direction: column;
+    gap: 12px;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
 }
 
-#gameCanvas {
-    background: #0f0f1e;
-    border-radius: 10px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
-    border: 3px solid rgba(255, 69, 0, 0.5);
-    cursor: crosshair;
+.hud-label {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-.controls-hint {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 0.8rem 1.5rem;
-    border-radius: 10px;
-    backdrop-filter: blur(10px);
-}
-
-.controls-hint p {
-    margin: 0;
-    font-size: 0.9rem;
-}
-
-.controls-hint strong {
+.hud-value {
+    font-size: 1.3rem;
+    font-weight: bold;
     color: #FFD700;
 }
 
-.leaderboard {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 1.5rem;
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
-    max-width: 400px;
-    margin: 0 auto;
+.leaderboard-mini {
+    background: rgba(0, 0, 0, 0.85);
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    min-width: 250px;
 }
 
-.leaderboard h3 {
+.leaderboard-mini h4 {
+    margin: 0 0 10px 0;
     text-align: center;
-    margin-bottom: 1rem;
     color: #FFD700;
+    font-size: 1rem;
 }
 
 #leaderboardList {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 6px;
 }
 
 .leaderboard-item {
     display: flex;
     justify-content: space-between;
-    padding: 0.8rem;
+    padding: 8px 12px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    border-left: 4px solid;
+    border-radius: 6px;
+    border-left: 3px solid;
+    font-size: 0.9rem;
 }
 
 .leaderboard-item.me {
     background: rgba(255, 215, 0, 0.2);
     border-color: #FFD700;
+    font-weight: bold;
 }
 
 .kill-feed {
