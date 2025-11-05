@@ -52,10 +52,11 @@ body {
     gap: 15px;
 }
 
-.hud-bottom-right {
+.hud-bottom-center {
     position: absolute;
     bottom: 30px;
-    right: 30px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .hud-health {

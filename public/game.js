@@ -25,6 +25,7 @@ const reloadIndicator = document.getElementById('reloadIndicator');
 const reloadProgress = document.getElementById('reloadProgress');
 const nameModal = document.getElementById('nameModal');
 const nameInput = document.getElementById('nameInput');
+const playerCountElement = document.getElementById('playerCount');
 
 let playerName = localStorage.getItem('playerName') || '';
 
@@ -193,12 +194,17 @@ socket.on('update', (data) => {
 });
 
 let uiUpdateCounter = 0;
-socket.on('update', () => {
+socket.on('update', (data) => {
     if (++uiUpdateCounter % 3 === 0) {
         updateUI();
-        updateLeaderboard();
+        updatePlayerCount();
     }
 });
+
+function updatePlayerCount() {
+    const count = Object.keys(players).length;
+    playerCountElement.textContent = count;
+}
 
 socket.on('powerUpSpawned', (powerUp) => {
     powerUps[powerUp.id] = powerUp;
@@ -695,24 +701,5 @@ function updateUI() {
     scoreElement.textContent = player.score;
 }
 
-function updateLeaderboard() {
-    const sortedPlayers = Object.values(players)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-
-    leaderboardList.innerHTML = sortedPlayers.map((player, index) => {
-        const isMe = player.id === myPlayerId;
-        const isBot = player.isBot;
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-        const name = isMe ? playerName || 'YOU' : isBot ? `🤖 ${player.name}` : (player.name || 'Player');
-        
-        return `
-            <div class="leaderboard-item ${isMe ? 'me' : ''}" style="border-color: ${player.color}">
-                <span>${medal} ${name}</span>
-                <span>${player.kills} | ${player.score}</span>
-            </div>
-        `;
-    }).join('');
-}
 
 gameLoop();

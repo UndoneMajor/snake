@@ -1,0 +1,185 @@
+@keyframes glow {
+    0%, 100% { 
+        filter: drop-shadow(0 0 10px currentColor) brightness(1); 
+    }
+    50% { 
+        filter: drop-shadow(0 0 25px currentColor) brightness(1.3); 
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes borderFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.combat-hud {
+    background: linear-gradient(135deg, 
+        rgba(0, 30, 60, 0.4) 0%, 
+        rgba(0, 0, 0, 0.6) 50%,
+        rgba(30, 0, 60, 0.4) 100%);
+    backdrop-filter: blur(15px);
+    position: relative;
+    overflow: hidden;
+}
+
+.combat-hud::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(0, 255, 255, 0.1), 
+        transparent);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.hp-bar-inner {
+    position: relative;
+    overflow: hidden;
+}
+
+.hp-bar-inner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.stat-title {
+    animation: glow 2s ease-in-out infinite;
+}
+
+.hp-text, .ammo-count {
+    animation: glow 3s ease-in-out infinite;
+}
+
+.network-status, .stat-panel {
+    backdrop-filter: blur(10px);
+    animation: float 3s ease-in-out infinite;
+}
+
+.player-count-panel {
+    background: linear-gradient(135deg, 
+        rgba(0, 255, 255, 0.15) 0%,
+        rgba(0, 0, 0, 0.7) 50%,
+        rgba(255, 0, 255, 0.15) 100%);
+    backdrop-filter: blur(15px);
+    padding: 20px 40px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 0 50px rgba(0, 255, 255, 0.4);
+    animation: float 4s ease-in-out infinite;
+}
+
+.player-count-panel::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    background: linear-gradient(45deg, 
+        #00ffff, 
+        #ff00ff, 
+        #00ffff, 
+        #ff00ff);
+    background-size: 400% 400%;
+    animation: borderFlow 3s ease infinite;
+    z-index: -1;
+}
+
+.count-icon {
+    font-size: 3rem;
+    animation: glow 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.8));
+}
+
+.count-label {
+    font-size: 0.7rem;
+    color: #00ffff;
+    letter-spacing: 3px;
+    font-weight: 700;
+    text-shadow: 0 0 10px #00ffff;
+}
+
+.count-number {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #ff00ff;
+    font-family: 'Orbitron', monospace;
+    text-shadow: 0 0 20px #ff00ff;
+    line-height: 1;
+}
+
+.kill-message {
+    backdrop-filter: blur(10px);
+}
+
+.kill-message::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: linear-gradient(180deg, #ff0000, #ff00ff);
+    box-shadow: 0 0 15px #ff0000;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, 
+        rgba(0, 255, 255, 0.03) 0%,
+        rgba(255, 0, 255, 0.03) 50%,
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+    animation: pulse 4s ease-in-out infinite;
+}
+
+#gameCanvas {
+    position: relative;
+    z-index: 0;
+}
+
+.hud {
+    z-index: 200;
+}
+
+@keyframes scan {
+    0% { left: -40%; }
+    100% { left: 140%; }
+}
+

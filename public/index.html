@@ -6,6 +6,7 @@
     <title>Multiplayer Shooter 🔫</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="hud.css">
+    <link rel="stylesheet" href="beautiful.css">
 </head>
 <body>
     <!-- Class Selection Modal -->
@@ -113,15 +114,14 @@
             </div>
         </div>
 
-        <!-- Bottom Right: Leaderboard -->
-        <div class="hud-bottom-right">
-            <div class="leaderboard-panel">
-                <div class="panel-header">
-                    <span class="header-icon">◆</span>
-                    <span>COMBAT RANKINGS</span>
-                    <span class="header-icon">◆</span>
+        <!-- Bottom Center: Player Count -->
+        <div class="hud-bottom-center">
+            <div class="player-count-panel">
+                <div class="count-icon">👥</div>
+                <div class="count-data">
+                    <div class="count-label">ACTIVE COMBATANTS</div>
+                    <div id="playerCount" class="count-number">0</div>
                 </div>
-                <div id="leaderboardList" class="rankings-list"></div>
             </div>
         </div>
 
