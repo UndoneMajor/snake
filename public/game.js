@@ -75,9 +75,35 @@ socket.on('bulletFired', (bullet) => {
     bullets[bullet.id] = bullet;
 });
 
-// Game state updates
+// Game state updates - with interpolation
 socket.on('gameState', (data) => {
-    players = data.players;
+    // Update other players with interpolation target
+    Object.keys(data.players).forEach(id => {
+        if (id === myPlayerId) return; // Skip self
+        
+        if (players[id]) {
+            // Store previous position for interpolation
+            players[id].prevX = players[id].x;
+            players[id].prevY = players[id].y;
+            players[id].targetX = data.players[id].x;
+            players[id].targetY = data.players[id].y;
+            players[id].angle = data.players[id].angle;
+            players[id].health = data.players[id].health;
+            players[id].ammo = data.players[id].ammo;
+            players[id].kills = data.players[id].kills;
+            players[id].score = data.players[id].score;
+            players[id].class = data.players[id].class;
+            players[id].color = data.players[id].color;
+        } else {
+            // New player
+            players[id] = data.players[id];
+            players[id].prevX = data.players[id].x;
+            players[id].prevY = data.players[id].y;
+            players[id].targetX = data.players[id].x;
+            players[id].targetY = data.players[id].y;
+        }
+    });
+    
     bullets = data.bullets;
     updateUI();
     updateLeaderboard();
@@ -168,7 +194,8 @@ function gameLoop() {
 }
 
 let lastMoveUpdate = 0;
-const MOVE_UPDATE_INTERVAL = 50; // Send updates every 50ms instead of every frame
+const MOVE_UPDATE_INTERVAL = 100; // Send updates every 100ms (10 times per second)
+const INTERPOLATION_SPEED = 0.25; // Smooth interpolation factor
 
 function handleMovement() {
     const player = players[myPlayerId];
@@ -208,6 +235,16 @@ function handleMovement() {
         });
         lastMoveUpdate = now;
     }
+
+    // Interpolate other players towards their target positions
+    Object.keys(players).forEach(id => {
+        if (id === myPlayerId) return;
+        const p = players[id];
+        if (p.targetX !== undefined) {
+            p.x += (p.targetX - p.x) * INTERPOLATION_SPEED;
+            p.y += (p.targetY - p.y) * INTERPOLATION_SPEED;
+        }
+    });
 
     // Check power-up collection
     Object.values(powerUps).forEach(powerUp => {

@@ -174,7 +174,7 @@ io.on('connection', (socket) => {
   
   socket.on('playerMove', (data) => {
     const now = Date.now();
-    if (lastMove[socket.id] && now - lastMove[socket.id] < 16) return; // Max 60 updates/sec
+    if (lastMove[socket.id] && now - lastMove[socket.id] < 50) return; // Max 20 updates/sec
     lastMove[socket.id] = now;
     
     if (players[socket.id]) {
@@ -352,7 +352,7 @@ setInterval(() => {
     players: players,
     bullets: bullets
   });
-}, 1000 / 30); // 30 FPS server tick rate (was 60, now more efficient)
+}, 1000 / 20); // 20 FPS server tick rate for better performance
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Multiplayer Shooter Server Running!`);
