@@ -94,13 +94,13 @@ socket.on('bulletFired', (bullet) => {
     bullets[bullet.id] = bullet;
 });
 
-// Game state updates - hybrid approach
+// Game state updates - client authoritative for self
 socket.on('gameState', (data) => {
     Object.keys(data.players).forEach(id => {
         const serverPlayer = data.players[id];
         
         if (id === myPlayerId) {
-            // Update ONLY stats from server, keep local position
+            // Update ONLY non-position data from server
             if (players[id]) {
                 players[id].health = serverPlayer.health;
                 players[id].ammo = serverPlayer.ammo;
@@ -108,24 +108,13 @@ socket.on('gameState', (data) => {
                 players[id].score = serverPlayer.score;
                 players[id].speed = serverPlayer.speed;
                 players[id].class = serverPlayer.class;
-                
-                // Soft correction if too far off
-                const dx = serverPlayer.x - players[id].x;
-                const dy = serverPlayer.y - players[id].y;
-                const distSquared = dx * dx + dy * dy;
-                
-                if (distSquared > 10000) { // If more than 100 pixels off, snap
-                    players[id].x = serverPlayer.x;
-                    players[id].y = serverPlayer.y;
-                } else if (distSquared > 100) { // If 10-100 pixels off, lerp
-                    players[id].x += (serverPlayer.x - players[id].x) * 0.1;
-                    players[id].y += (serverPlayer.y - players[id].y) * 0.1;
-                }
+                players[id].color = serverPlayer.color;
+                // DO NOT update x, y - client controls these
             } else {
                 players[id] = { ...serverPlayer };
             }
         } else {
-            // Other players - interpolation
+            // Other players - use server position with interpolation
             if (players[id]) {
                 players[id].targetX = serverPlayer.x;
                 players[id].targetY = serverPlayer.y;

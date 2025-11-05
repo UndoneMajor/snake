@@ -169,35 +169,22 @@ io.on('connection', (socket) => {
     console.log(`✅ Player joined as ${playerClass}: ${socket.id}`);
   });
 
-  // Handle player input (server authoritative)
+  // Handle player input - trust client position for smooth movement
   socket.on('playerInput', (data) => {
     if (!players[socket.id]) return;
     
     const player = players[socket.id];
     const { dx, dy, angle } = data;
     
-    // Server processes movement
+    // Just update what client sends (they handle collision client-side)
+    // This makes movement smooth but server still validates major things
     if (dx !== 0 || dy !== 0) {
       const newX = player.x + dx * player.speed;
       const newY = player.y + dy * player.speed;
       
-      // Check collision
-      if (!collidesWithWall(newX, newY)) {
-        player.x = newX;
-        player.y = newY;
-      } else {
-        // Sliding
-        if (!collidesWithWall(newX, player.y)) {
-          player.x = newX;
-        }
-        if (!collidesWithWall(player.x, newY)) {
-          player.y = newY;
-        }
-      }
-      
-      // Clamp to bounds
-      player.x = Math.max(PLAYER_SIZE/2, Math.min(MAP_WIDTH - PLAYER_SIZE/2, player.x));
-      player.y = Math.max(PLAYER_SIZE/2, Math.min(MAP_HEIGHT - PLAYER_SIZE/2, player.y));
+      // Basic bounds check only (trust client for walls)
+      player.x = Math.max(PLAYER_SIZE/2, Math.min(MAP_WIDTH - PLAYER_SIZE/2, newX));
+      player.y = Math.max(PLAYER_SIZE/2, Math.min(MAP_HEIGHT - PLAYER_SIZE/2, newY));
     }
     
     player.angle = angle;
