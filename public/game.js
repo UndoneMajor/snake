@@ -136,9 +136,21 @@ socket.on('update', (data) => {
         } else {
             if (!players[id]) {
                 players[id] = { ...data.players[id] };
+                players[id].targetX = data.players[id].x;
+                players[id].targetY = data.players[id].y;
+            } else {
+                const dx = data.players[id].x - players[id].x;
+                const dy = data.players[id].y - players[id].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 200) {
+                    players[id].x = data.players[id].x;
+                    players[id].y = data.players[id].y;
+                } else {
+                    players[id].targetX = data.players[id].x;
+                    players[id].targetY = data.players[id].y;
+                }
             }
-            players[id].targetX = data.players[id].x;
-            players[id].targetY = data.players[id].y;
             players[id].health = data.players[id].health;
             players[id].ammo = data.players[id].ammo;
             players[id].color = data.players[id].color;
@@ -264,7 +276,7 @@ function updatePlayerAngle() {
     player.angle = angle;
 }
 
-const INTERPOLATION_SPEED = 0.5;
+const INTERPOLATION_SPEED = 0.15;
 
 function handleMovement() {
     const player = players[myPlayerId];
@@ -338,9 +350,18 @@ function handleMovement() {
     Object.keys(players).forEach(id => {
         if (id === myPlayerId) return;
         const p = players[id];
-        if (p.targetX !== undefined) {
-            p.x += (p.targetX - p.x) * INTERPOLATION_SPEED;
-            p.y += (p.targetY - p.y) * INTERPOLATION_SPEED;
+        if (p.targetX !== undefined && p.targetY !== undefined) {
+            const dx = p.targetX - p.x;
+            const dy = p.targetY - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 5) {
+                p.x += dx * INTERPOLATION_SPEED;
+                p.y += dy * INTERPOLATION_SPEED;
+            } else {
+                p.x = p.targetX;
+                p.y = p.targetY;
+            }
         }
     });
 
