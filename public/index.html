@@ -56,36 +56,25 @@
 
     <!-- In-Game HUD -->
     <div class="hud">
-        <!-- Top Center: Health & Ammo -->
-        <div class="hud-top-center">
-            <div class="combat-hud">
-                <div class="hp-section">
-                    <div class="stat-title">HEALTH POINTS</div>
-                    <div class="hp-bar-container">
-                        <div class="hp-bar-outer">
-                            <div id="healthFill" class="hp-bar-inner"></div>
-                            <div class="hp-scan"></div>
-                        </div>
-                        <span id="healthText" class="hp-text">100</span>
-                    </div>
+        <!-- Bottom Left: TF2 Style Health & Ammo -->
+        <div class="hud-bottom-left">
+            <div class="tf2-health">
+                <div class="health-cross">
+                    <div class="cross-horizontal"></div>
+                    <div class="cross-vertical"></div>
+                    <div id="healthFill" class="cross-fill"></div>
                 </div>
-                <div class="ammo-section">
-                    <div class="stat-title">AMMUNITION</div>
-                    <div class="ammo-display">
-                        <div class="ammo-icon">▣▣▣</div>
-                        <div class="ammo-numbers">
-                            <span id="ammo" class="ammo-count">30</span>
-                            <span class="ammo-slash">/</span>
-                            <span id="reserve" class="reserve-count">60</span>
-                        </div>
-                    </div>
-                    <div id="reloadIndicator" class="reload-indicator" style="display: none;">
-                        <div class="reload-bar">
-                            <div id="reloadProgress" class="reload-progress"></div>
-                        </div>
-                        <div class="reload-text">RELOADING...</div>
-                    </div>
+                <div id="healthText" class="health-number">100</div>
+            </div>
+            <div class="tf2-ammo">
+                <div class="ammo-current" id="ammo">30</div>
+                <div class="ammo-reserve" id="reserve">60</div>
+            </div>
+            <div id="reloadIndicator" class="tf2-reload" style="display: none;">
+                <div class="reload-bar-tf2">
+                    <div id="reloadProgress" class="reload-fill"></div>
                 </div>
+                <div class="reload-label">RELOAD</div>
             </div>
         </div>
 

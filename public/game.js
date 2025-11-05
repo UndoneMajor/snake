@@ -693,8 +693,17 @@ function updateUI() {
     const player = players[myPlayerId];
     if (!player) return;
 
-    healthFill.style.width = player.health + '%';
+    healthFill.style.height = player.health + '%';
     healthText.textContent = player.health;
+    
+    if (player.health > 75) {
+        healthFill.style.background = 'linear-gradient(180deg, rgba(0, 255, 100, 0.6), rgba(0, 255, 100, 0.9))';
+    } else if (player.health > 40) {
+        healthFill.style.background = 'linear-gradient(180deg, rgba(255, 200, 0, 0.6), rgba(255, 200, 0, 0.9))';
+    } else {
+        healthFill.style.background = 'linear-gradient(180deg, rgba(255, 0, 0, 0.6), rgba(255, 0, 0, 0.9))';
+    }
+    
     ammoElement.textContent = player.ammo;
     reserveElement.textContent = player.reserve || 0;
     killsElement.textContent = player.kills;

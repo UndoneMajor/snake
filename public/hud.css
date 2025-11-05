@@ -95,30 +95,113 @@
     gap: 15px;
 }
 
-.ammo-numbers {
+.tf2-health {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    align-items: center;
+    gap: 15px;
 }
 
-.ammo-count {
-    font-size: 3rem;
+.health-cross {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.cross-horizontal {
+    position: absolute;
+    top: 50%;
+    left: 20%;
+    width: 60%;
+    height: 20%;
+    transform: translateY(-50%);
+    background: #fff;
+}
+
+.cross-vertical {
+    position: absolute;
+    left: 50%;
+    top: 20%;
+    width: 20%;
+    height: 60%;
+    transform: translateX(-50%);
+    background: #fff;
+}
+
+.cross-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(0, 255, 100, 0.6), rgba(0, 255, 100, 0.9));
+    transition: height 0.3s ease;
+    z-index: -1;
+}
+
+.health-number {
+    font-size: 4rem;
     font-weight: 900;
-    color: #ff00ff;
-    text-shadow: 0 0 20px #ff00ff;
+    color: #fff;
     font-family: 'Orbitron', monospace;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.5);
 }
 
-.ammo-slash {
-    font-size: 2rem;
-    color: rgba(255, 255, 255, 0.3);
+.tf2-ammo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
 }
 
-.reserve-count {
+.ammo-current {
+    font-size: 4.5rem;
+    font-weight: 900;
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.5);
+    line-height: 1;
+}
+
+.ammo-reserve {
     font-size: 1.8rem;
     font-weight: 700;
-    color: rgba(255, 0, 255, 0.5);
+    color: rgba(255, 255, 255, 0.6);
     font-family: 'Orbitron', monospace;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.tf2-reload {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 8px 15px;
+    border: 2px solid #ffff00;
+    border-left: 4px solid #ffff00;
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.4);
+}
+
+.reload-bar-tf2 {
+    width: 150px;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #ffff00;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.reload-fill {
+    height: 100%;
+    background: #ffff00;
+    width: 0%;
+    box-shadow: 0 0 10px #ffff00;
+}
+
+.reload-label {
+    text-align: center;
+    color: #ffff00;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
 }
 
 .reload-indicator {

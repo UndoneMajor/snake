@@ -52,6 +52,15 @@ body {
     gap: 15px;
 }
 
+.hud-bottom-left {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+    display: flex;
+    gap: 25px;
+    align-items: flex-end;
+}
+
 .hud-bottom-right {
     position: absolute;
     bottom: 20px;
