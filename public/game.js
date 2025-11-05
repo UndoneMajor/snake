@@ -147,13 +147,26 @@ socket.on('powerUpCollected', (powerUpId) => {
     delete powerUps[powerUpId];
 });
 
+// You died - back to class selection
+socket.on('youDied', (data) => {
+    const killer = players[data.killerId];
+    const killerClassName = data.killerClass ? data.killerClass.charAt(0).toUpperCase() + data.killerClass.slice(1) : 'Unknown';
+    
+    addKillMessage(`💀 You were eliminated by ${killerClassName}!`);
+    
+    // Show class selection after short delay
+    setTimeout(() => {
+        classModal.classList.remove('hidden');
+        myPlayerId = null;
+        myClass = null;
+        classConfig = null;
+    }, 2000);
+});
+
 // Kill feed
 socket.on('playerKilled', (data) => {
-    const killer = players[data.killerId];
-    const victim = players[data.victimId];
-    
-    if (killer && victim) {
-        addKillMessage(`${data.killerId === myPlayerId ? 'You' : 'Player'} eliminated ${data.victimId === myPlayerId ? 'you' : 'Player'}!`);
+    if (data.victimId !== myPlayerId) {
+        addKillMessage(`Player eliminated!`);
     }
 });
 

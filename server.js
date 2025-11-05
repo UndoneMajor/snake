@@ -17,11 +17,11 @@ const MAP_HEIGHT = 1800;
 const PLAYER_SIZE = 30;
 const PLAYER_SPEED = 3;
 
-// Class configs
+// Class configs - faster bullets
 const CLASS_CONFIGS = {
-  shotgun: { bulletSpeed: 10, bulletCount: 3, spread: 0.3, fireRate: 600, damage: 20, maxAmmo: 20 },
-  sniper: { bulletSpeed: 20, bulletCount: 1, spread: 0, fireRate: 800, damage: 30, maxAmmo: 15 },
-  rifle: { bulletSpeed: 12, bulletCount: 1, spread: 0.05, fireRate: 100, damage: 15, maxAmmo: 40 }
+  shotgun: { bulletSpeed: 14, bulletCount: 3, spread: 0.3, fireRate: 600, damage: 20, maxAmmo: 20 },
+  sniper: { bulletSpeed: 28, bulletCount: 1, spread: 0, fireRate: 800, damage: 30, maxAmmo: 15 },
+  rifle: { bulletSpeed: 18, bulletCount: 1, spread: 0.05, fireRate: 100, damage: 15, maxAmmo: 40 }
 };
 
 // Walls
@@ -216,11 +216,14 @@ setInterval(() => {
             players[bullet.ownerId].score += 100;
           }
 
-          const pos = randomPosition();
-          player.x = pos.x;
-          player.y = pos.y;
-          player.health = 100;
-          player.ammo = player.classConfig.maxAmmo;
+          // Notify player they died - don't respawn automatically
+          io.to(playerId).emit('youDied', {
+            killerId: bullet.ownerId,
+            killerClass: players[bullet.ownerId]?.class
+          });
+
+          // Remove player from game
+          delete players[playerId];
 
           io.emit('playerKilled', {
             killerId: bullet.ownerId,
@@ -233,12 +236,12 @@ setInterval(() => {
     });
   });
 
-  // Broadcast at 20 FPS
+  // Broadcast at 30 FPS for smoother bullets
   io.emit('gameState', {
     players: players,
     bullets: bullets
   });
-}, 50); // 20 FPS
+}, 33); // 30 FPS
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Server Running: http://localhost:${PORT}\n`);
