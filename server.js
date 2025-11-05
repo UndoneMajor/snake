@@ -154,7 +154,7 @@ io.on('connection', (socket) => {
     if (players[socket.id]) {
       players[socket.id].x = data.x;
       players[socket.id].y = data.y;
-      players[socket.id].angle = data.angle;
+      // Don't send angle to other players - saves bandwidth
     }
   });
 

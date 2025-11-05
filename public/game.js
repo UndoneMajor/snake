@@ -114,7 +114,7 @@ socket.on('update', (data) => {
             }
             players[id].targetX = data.players[id].x;
             players[id].targetY = data.players[id].y;
-            players[id].angle = data.players[id].angle;
+            // Don't update angle - not needed for other players
             players[id].health = data.players[id].health;
             players[id].ammo = data.players[id].ammo;
             players[id].color = data.players[id].color;
@@ -305,11 +305,10 @@ function handleMovement() {
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
     }
     
-    // Send position every frame for max responsiveness
+    // Send position (no angle - saves 33% bandwidth!)
     socket.emit('updatePosition', {
         x: player.x,
-        y: player.y,
-        angle: angle
+        y: player.y
     });
 
     // Interpolate others
@@ -435,16 +434,18 @@ function draw() {
         ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw direction line
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(player.x, player.y);
-        ctx.lineTo(
-            player.x + Math.cos(player.angle) * 25,
-            player.y + Math.sin(player.angle) * 25
-        );
-        ctx.stroke();
+        // ONLY draw direction line for YOUR player
+        if (isMe) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(
+                player.x + Math.cos(player.angle) * 25,
+                player.y + Math.sin(player.angle) * 25
+            );
+            ctx.stroke();
+        }
 
         // Health bar
         const barWidth = 40;
