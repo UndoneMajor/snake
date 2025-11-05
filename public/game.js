@@ -436,18 +436,26 @@ function handleMovement() {
 let lastShot = 0;
 let localBulletId = 0;
 
-function checkInstantHit(bullet) {
+function checkInstantHit(originalBullet) {
+    const testBullet = { 
+        x: originalBullet.x, 
+        y: originalBullet.y,
+        vx: originalBullet.vx,
+        vy: originalBullet.vy
+    };
+    
     for (let i = 0; i < 50; i++) {
-        bullet.x += bullet.vx;
-        bullet.y += bullet.vy;
+        testBullet.x += testBullet.vx;
+        testBullet.y += testBullet.vy;
         
-        if (collidesWithWall(bullet.x, bullet.y, 10)) return null;
+        if (collidesWithWall(testBullet.x, testBullet.y, 10)) return null;
         
         for (let pid in players) {
             if (pid === myPlayerId) continue;
             const p = players[pid];
-            const dx = p.x - bullet.x;
-            const dy = p.y - bullet.y;
+            if (!p) continue;
+            const dx = p.x - testBullet.x;
+            const dy = p.y - testBullet.y;
             if (dx * dx + dy * dy < 400) {
                 return p;
             }
