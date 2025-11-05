@@ -54,6 +54,19 @@ const CLASS_CONFIGS = {
     maxReserve: 60,
     reloadTime: 1500,
     speed: PLAYER_SPEED * 0.85
+  },
+  pyro: {
+    bulletSpeed: 5,
+    bulletCount: 8,
+    spread: 0.5,
+    fireRate: 50,
+    damage: 3,
+    maxAmmo: 100,
+    maxReserve: 100,
+    reloadTime: 3000,
+    speed: PLAYER_SPEED * 1.05,
+    isFlame: true,
+    flameRange: 150
   }
 };
 
@@ -129,7 +142,7 @@ const BOT_NAMES = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'SIGMA', 'OMEGA', 'PRIME',
 
 function createBot() {
   const botId = `bot_${botIdCounter++}`;
-  const classes = ['shotgun', 'sniper', 'rifle'];
+  const classes = ['shotgun', 'sniper', 'rifle', 'pyro'];
   const botClass = classes[Math.floor(Math.random() * classes.length)];
   const config = CLASS_CONFIGS[botClass];
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
@@ -223,6 +236,13 @@ function updateBot(botId) {
     if (distToPlayer < 400 && bot.ammo > 0 && !bot.isReloading && now - bot.lastShot > bot.classConfig.fireRate) {
       bot.lastShot = now;
       bot.ammo--;
+      bot.isShooting = true;
+      
+      setTimeout(() => {
+        if (players[botId]) {
+          players[botId].isShooting = false;
+        }
+      }, 100);
       
       for (let i = 0; i < bot.classConfig.bulletCount; i++) {
         let angle = bot.angle;
@@ -322,7 +342,8 @@ io.on('connection', (socket) => {
       class: playerClass,
       classConfig: config,
       isReloading: false,
-      name: playerName
+      name: playerName,
+      isShooting: false
     };
 
     socket.emit('init', {
@@ -342,6 +363,7 @@ io.on('connection', (socket) => {
     if (players[socket.id]) {
       players[socket.id].x = data.x;
       players[socket.id].y = data.y;
+      players[socket.id].angle = data.angle;
     }
   });
 
@@ -396,6 +418,18 @@ io.on('connection', (socket) => {
         delete players[data.victimId];
       }
       io.emit('playerKilled', { killerId: socket.id, victimId: data.victimId });
+    }
+  });
+
+  socket.on('shootStart', () => {
+    if (players[socket.id]) {
+      players[socket.id].isShooting = true;
+    }
+  });
+
+  socket.on('shootEnd', () => {
+    if (players[socket.id]) {
+      players[socket.id].isShooting = false;
     }
   });
 

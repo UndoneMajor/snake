@@ -85,7 +85,8 @@ let classConfig = null;
 const CLASS_CONFIGS = {
     shotgun: { fireRate: 500, icon: '🔫', reloadTime: 2000 },
     sniper: { fireRate: 700, icon: '🎯', reloadTime: 2500 },
-    rifle: { fireRate: 80, icon: '💥', reloadTime: 1500 }
+    rifle: { fireRate: 80, icon: '💥', reloadTime: 1500 },
+    pyro: { fireRate: 50, icon: '🔥', reloadTime: 3000, isFlame: true }
 };
 
 let isReloading = false;
@@ -195,6 +196,10 @@ socket.on('update', (data) => {
             players[id].color = data.players[id].color;
             players[id].class = data.players[id].class;
             players[id].speed = data.players[id].speed;
+            players[id].angle = data.players[id].angle || players[id].angle || 0;
+            players[id].isShooting = data.players[id].isShooting || false;
+            players[id].isBot = data.players[id].isBot;
+            players[id].name = data.players[id].name;
         }
     });
 });
@@ -298,13 +303,23 @@ canvas.addEventListener('mouseenter', (e) => {
 canvas.addEventListener('mousedown', (e) => {
     if (e.button === 0) {
         mouse.down = true;
+        const player = players[myPlayerId];
+        if (player) {
+            player.isShooting = true;
+        }
         shoot();
+        socket.emit('shootStart');
     }
 });
 
 canvas.addEventListener('mouseup', (e) => {
     if (e.button === 0) {
         mouse.down = false;
+        const player = players[myPlayerId];
+        if (player) {
+            player.isShooting = false;
+        }
+        socket.emit('shootEnd');
     }
 });
 
@@ -333,6 +348,11 @@ function gameLoop() {
     updatePlayerAngle();
     handleMovement();
     updateCamera();
+    
+    if (mouse.down) {
+        shoot();
+    }
+    
     draw();
     requestAnimationFrame(gameLoop);
 }
@@ -392,12 +412,21 @@ function handleMovement() {
     
     socket.emit('updatePosition', {
         x: player.x,
-        y: player.y
+        y: player.y,
+        angle: player.angle
     });
 
     Object.keys(bullets).forEach(bid => {
         const b = bullets[bid];
         if (!b || !b.vx || !b.vy) return;
+        
+        if (b.class === 'pyro') {
+            const age = Date.now() - (b.clientTime || 0);
+            if (age > 400) {
+                delete bullets[bid];
+                return;
+            }
+        }
         
         b.x += b.vx;
         b.y += b.vy;
@@ -518,19 +547,21 @@ function shoot() {
         if (player && player.reserve > 0 && !isReloading) {
             reload();
         }
+        socket.emit('shootEnd');
         return;
     }
     
     const now = Date.now();
     if (now - lastShot < classConfig.fireRate) return;
     lastShot = now;
-
+    
     const angle = player.angle;
 
     const serverConfig = {
         shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, damage: 35 },
         sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, damage: 20 },
-        rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, damage: 15 }
+        rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, damage: 15 },
+        pyro: { bulletSpeed: 5, bulletCount: 8, spread: 0.5, damage: 3, flameRange: 150 }
     };
     
     const bulletConfig = serverConfig[myClass];
@@ -651,7 +682,29 @@ function draw() {
         ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
         ctx.fill();
 
-        if (isMe) {
+        if (player.class === 'pyro' && player.isShooting) {
+            const flameRange = 150;
+            const coneWidth = 0.5;
+            
+            const pulseOpacity = isMe ? 0.2 + Math.sin(Date.now() / 150) * 0.15 : 0.12;
+            ctx.fillStyle = `rgba(255, 180, 0, ${pulseOpacity})`;
+            ctx.strokeStyle = isMe ? 'rgba(255, 200, 0, 0.5)' : 'rgba(255, 150, 0, 0.3)';
+            ctx.lineWidth = isMe ? 3 : 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(
+                player.x + Math.cos(player.angle - coneWidth) * flameRange,
+                player.y + Math.sin(player.angle - coneWidth) * flameRange
+            );
+            ctx.lineTo(
+                player.x + Math.cos(player.angle + coneWidth) * flameRange,
+                player.y + Math.sin(player.angle + coneWidth) * flameRange
+            );
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        } else if (isMe && player.class !== 'pyro') {
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -689,17 +742,51 @@ function draw() {
     });
 
     Object.values(bullets).forEach(bullet => {
-        ctx.fillStyle = bullet.color;
-        
-        const bulletSize = bullet.class === 'sniper' ? 8 : bullet.class === 'shotgun' ? 5 : 6;
-        const glowSize = bullet.class === 'sniper' ? 20 : 12;
-        
-        ctx.shadowBlur = glowSize;
-        ctx.shadowColor = bullet.color;
-        ctx.beginPath();
-        ctx.arc(bullet.x, bullet.y, bulletSize, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        if (bullet.class === 'pyro') {
+            const startTime = bullet.clientTime || 0;
+            const age = Date.now() - startTime;
+            const maxAge = 400;
+            const opacity = Math.max(0, 1 - age / maxAge);
+            const size = 12 + age / 30;
+            
+            if (age > maxAge) {
+                delete bullets[bullet.id];
+                return;
+            }
+            
+            ctx.globalAlpha = opacity;
+            
+            const hue = 30 + Math.random() * 30;
+            ctx.fillStyle = `hsl(${hue}, 100%, 60%)`;
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = 'rgba(255, 150, 0, 0.8)';
+            
+            ctx.save();
+            ctx.translate(bullet.x, bullet.y);
+            ctx.rotate((age / 100) + Math.sin(age / 50) * 0.5);
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size * 0.9, size * 0.6);
+            ctx.lineTo(-size * 0.9, size * 0.6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+        } else {
+            ctx.fillStyle = bullet.color;
+            
+            const bulletSize = bullet.class === 'sniper' ? 8 : bullet.class === 'shotgun' ? 5 : 6;
+            const glowSize = bullet.class === 'sniper' ? 20 : 12;
+            
+            ctx.shadowBlur = glowSize;
+            ctx.shadowColor = bullet.color;
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, bulletSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
     });
 
     ctx.restore();
