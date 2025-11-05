@@ -61,11 +61,11 @@ socket.on('pong', () => {
     pingElement.textContent = currentPing + 'ms';
     
     if (currentPing < 50) {
-        pingIndicator.className = 'ping-indicator good';
+        pingIndicator.className = 'ping-dot good';
     } else if (currentPing < 100) {
-        pingIndicator.className = 'ping-indicator medium';
+        pingIndicator.className = 'ping-dot medium';
     } else {
-        pingIndicator.className = 'ping-indicator bad';
+        pingIndicator.className = 'ping-dot bad';
     }
 });
 

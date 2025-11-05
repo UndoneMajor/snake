@@ -89,38 +89,34 @@
             </div>
         </div>
 
-        <!-- Top Right: Network & Stats -->
+        <!-- Top Right: Compact Stats -->
         <div class="hud-top-right">
-            <div class="network-status">
-                <div class="ping-indicator" id="pingIndicator">●</div>
-                <div>
-                    <div class="ping-label">PING</div>
-                    <span id="ping" class="ping-value">0ms</span>
+            <div class="compact-stats">
+                <div class="compact-row">
+                    <span id="playerClass" class="compact-value">-</span>
                 </div>
-            </div>
-            <div class="stat-panel">
-                <div class="stat-row">
-                    <span class="stat-label">CLASS:</span>
-                    <span id="playerClass" class="stat-value">-</span>
+                <div class="compact-row">
+                    <span class="compact-label">K</span>
+                    <span id="kills" class="compact-value">0</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">KILLS:</span>
-                    <span id="kills" class="stat-value">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">SCORE:</span>
-                    <span id="score" class="stat-value">0</span>
+                <div class="compact-row">
+                    <span class="compact-label">S</span>
+                    <span id="score" class="compact-value">0</span>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom Center: Player Count -->
-        <div class="hud-bottom-center">
-            <div class="player-count-panel">
-                <div class="count-icon">👥</div>
-                <div class="count-data">
-                    <div class="count-label">ACTIVE COMBATANTS</div>
-                    <div id="playerCount" class="count-number">0</div>
+        <!-- Bottom Right: Network Info -->
+        <div class="hud-bottom-right">
+            <div class="info-panel">
+                <div class="info-item">
+                    <div class="ping-dot" id="pingIndicator"></div>
+                    <span id="ping">0ms</span>
+                </div>
+                <div class="info-divider">|</div>
+                <div class="info-item">
+                    <span>👥</span>
+                    <span id="playerCount">0</span>
                 </div>
             </div>
         </div>
