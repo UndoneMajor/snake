@@ -154,6 +154,9 @@ socket.on('youDied', (data) => {
     
     addKillMessage(`💀 You were eliminated by ${killerClassName}!`);
     
+    // Remove yourself from local players immediately
+    delete players[myPlayerId];
+    
     // Show class selection after short delay
     setTimeout(() => {
         classModal.classList.remove('hidden');
@@ -165,6 +168,9 @@ socket.on('youDied', (data) => {
 
 // Kill feed
 socket.on('playerKilled', (data) => {
+    // Remove dead player from local game
+    delete players[data.victimId];
+    
     if (data.victimId !== myPlayerId) {
         addKillMessage(`Player eliminated!`);
     }

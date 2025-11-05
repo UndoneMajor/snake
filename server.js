@@ -182,6 +182,20 @@ io.on('connection', (socket) => {
   });
 });
 
+// Wall collision check
+function collidesWithWall(x, y, size = 10) {
+  const halfSize = size / 2;
+  for (let wall of walls) {
+    if (x + halfSize > wall.x && 
+        x - halfSize < wall.x + wall.width && 
+        y + halfSize > wall.y && 
+        y - halfSize < wall.y + wall.height) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Game loop - bullets only
 setInterval(() => {
   Object.keys(bullets).forEach(bulletId => {
@@ -193,6 +207,12 @@ setInterval(() => {
 
     // Remove out of bounds
     if (bullet.x < 0 || bullet.x > MAP_WIDTH || bullet.y < 0 || bullet.y > MAP_HEIGHT) {
+      delete bullets[bulletId];
+      return;
+    }
+
+    // Check wall collision
+    if (collidesWithWall(bullet.x, bullet.y, 10)) {
       delete bullets[bulletId];
       return;
     }
@@ -236,7 +256,7 @@ setInterval(() => {
     });
   });
 
-  // Broadcast at 30 FPS for smoother bullets
+  // Broadcast at 30 FPS
   io.emit('gameState', {
     players: players,
     bullets: bullets
