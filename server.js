@@ -515,15 +515,17 @@ const BULLET_KEYS = () => Object.keys(bullets);
 
 setInterval(() => {
   Object.keys(players).forEach(pid => {
-    if (players[pid].isBot) {
+    if (players[pid]?.isBot) {
       updateBot(pid);
     }
   });
+}, 100);
 
-  const bulletKeys = BULLET_KEYS();
-  const playerKeys = PLAYER_KEYS();
+setInterval(() => {
+  const bulletKeys = Object.keys(bullets);
+  const playerKeys = Object.keys(players);
   
-  for (let i = 0; i < bulletKeys.length; i++) {
+  for (let i = bulletKeys.length - 1; i >= 0; i--) {
     const bid = bulletKeys[i];
     const b = bullets[bid];
     if (!b) continue;
@@ -545,9 +547,8 @@ setInterval(() => {
       
       const dx = p.x - b.x;
       const dy = p.y - b.y;
-      const hitRadius = 400;
       
-      if (dx * dx + dy * dy < hitRadius) {
+      if (dx * dx + dy * dy < 400) {
         let damage = b.damage;
         
         if (b.class === 'sniper' && b.startX && b.startY) {
@@ -564,7 +565,7 @@ setInterval(() => {
             players[b.ownerId].kills++;
             players[b.ownerId].score += 100;
           }
-          if (players[pid].isBot) {
+          if (p.isBot) {
             delete players[pid];
             setTimeout(() => {
               const botCount = Object.values(players).filter(p => p.isBot).length;
@@ -586,25 +587,11 @@ setInterval(() => {
       }
     }
   }
-
-  io.emit('update', { players, bullets });
-}, 16);
+}, 33);
 
 setInterval(() => {
-  Object.keys(players).forEach(pid => {
-    const p = players[pid];
-    if (p) {
-      io.to(pid).emit('serverUpdate', {
-        x: p.x,
-        y: p.y,
-        health: p.health,
-        ammo: p.ammo,
-        reserve: p.reserve,
-        timestamp: Date.now()
-      });
-    }
-  });
-}, 100);
+  io.emit('update', { players, bullets });
+}, 50);
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Server: http://localhost:${PORT}\n`);

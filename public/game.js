@@ -368,7 +368,8 @@ function updatePlayerAngle() {
     player.angle = angle;
 }
 
-const INTERPOLATION_SPEED = 0.15;
+const INTERPOLATION_SPEED = 0.2;
+let lastMoveUpdate = 0;
 
 function handleMovement() {
     const player = players[myPlayerId];
@@ -410,11 +411,15 @@ function handleMovement() {
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
     }
     
-    socket.emit('updatePosition', {
-        x: player.x,
-        y: player.y,
-        angle: player.angle
-    });
+    const now = Date.now();
+    if (!lastMoveUpdate || now - lastMoveUpdate > 50) {
+        socket.emit('updatePosition', {
+            x: player.x,
+            y: player.y,
+            angle: player.angle
+        });
+        lastMoveUpdate = now;
+    }
 
     Object.keys(bullets).forEach(bid => {
         const b = bullets[bid];
