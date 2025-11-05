@@ -9,25 +9,22 @@ const io = socketIO(server, {
   pingInterval: 25000,
   pingTimeout: 60000,
   upgradeTimeout: 30000,
-  perMessageDeflate: false // Disable compression for speed
+  perMessageDeflate: false
 });
 
 const PORT = process.env.PORT || 3000;
 app.use(express.static('public'));
 
-// Game constants
 const MAP_WIDTH = 2400;
 const MAP_HEIGHT = 1800;
 const PLAYER_SPEED = 3;
 
-// ULTRA FAST bullets
 const CLASS_CONFIGS = {
   shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, fireRate: 500, damage: 20, maxAmmo: 20 },
   sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, fireRate: 700, damage: 30, maxAmmo: 15 },
   rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, fireRate: 80, damage: 15, maxAmmo: 40 }
 };
 
-// Walls
 const walls = [
   { x: 0, y: 0, width: MAP_WIDTH, height: 20 },
   { x: 0, y: MAP_HEIGHT - 20, width: MAP_WIDTH, height: 20 },
@@ -51,7 +48,6 @@ const powerUps = {};
 let bulletIdCounter = 0;
 let powerUpIdCounter = 0;
 
-// Safe spawn points
 const SPAWN_POINTS = [
   { x: 100, y: 100 },
   { x: 2300, y: 100 },
@@ -95,12 +91,8 @@ function spawnPowerUp() {
 setInterval(spawnPowerUp, 10000);
 for (let i = 0; i < 3; i++) spawnPowerUp();
 
-// Optimized wall collision
-const wallCache = new Map();
 function collidesWithWall(x, y, size = 10) {
-  const key = `${Math.floor(x/50)},${Math.floor(y/50)}`;
   const halfSize = size / 2;
-  
   for (let wall of walls) {
     if (x + halfSize > wall.x && 
         x - halfSize < wall.x + wall.width && 
@@ -154,7 +146,6 @@ io.on('connection', (socket) => {
     if (players[socket.id]) {
       players[socket.id].x = data.x;
       players[socket.id].y = data.y;
-      // Don't send angle to other players - saves bandwidth
     }
   });
 
@@ -188,7 +179,6 @@ io.on('connection', (socket) => {
         class: player.class
       };
 
-      // Broadcast immediately to all clients
       io.emit('bulletFired', bullets[bulletId]);
     }
   });
@@ -220,7 +210,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ULTRA OPTIMIZED game loop - 60 FPS
 const PLAYER_KEYS = () => Object.keys(players);
 const BULLET_KEYS = () => Object.keys(bullets);
 
@@ -228,7 +217,6 @@ setInterval(() => {
   const bulletKeys = BULLET_KEYS();
   const playerKeys = PLAYER_KEYS();
   
-  // Update bullets
   for (let i = 0; i < bulletKeys.length; i++) {
     const bid = bulletKeys[i];
     const b = bullets[bid];
@@ -237,13 +225,11 @@ setInterval(() => {
     b.x += b.vx;
     b.y += b.vy;
 
-    // Bounds check
     if (b.x < 0 || b.x > MAP_WIDTH || b.y < 0 || b.y > MAP_HEIGHT || collidesWithWall(b.x, b.y, 10)) {
       delete bullets[bid];
       continue;
     }
 
-    // Hit check
     for (let j = 0; j < playerKeys.length; j++) {
       const pid = playerKeys[j];
       if (pid === b.ownerId) continue;
@@ -270,7 +256,6 @@ setInterval(() => {
           io.emit('playerKilled', { killerId: b.ownerId, victimId: pid });
         }
         
-        // Tell all clients to remove this bullet
         io.emit('bulletHit', bid);
         delete bullets[bid];
         break;
@@ -278,9 +263,8 @@ setInterval(() => {
     }
   }
 
-  // Broadcast at 60 FPS
   io.emit('update', { players, bullets });
-}, 16); // 60 FPS
+}, 16);
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Server: http://localhost:${PORT}\n`);

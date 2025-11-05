@@ -1,13 +1,12 @@
-/* Combat HUD */
 .combat-hud {
     display: flex;
     gap: 40px;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 40, 0.9) 100%);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 20, 40, 0.5) 100%);
     padding: 20px 40px;
     border: 3px solid transparent;
     background-clip: padding-box;
     position: relative;
-    box-shadow: 0 0 40px rgba(0, 255, 255, 0.4);
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
 }
 
 .combat-hud::before {
@@ -98,16 +97,15 @@
     font-family: 'Orbitron', monospace;
 }
 
-/* Network Status */
 .network-status {
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.5);
     padding: 12px 20px;
     border: 2px solid #00ff00;
     border-left: 6px solid #00ff00;
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
 }
 
 .ping-indicator {
@@ -138,13 +136,12 @@
     font-family: 'Orbitron', monospace;
 }
 
-/* Stats Panel */
 .stat-panel {
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.5);
     padding: 15px 25px;
     border: 2px solid #ff00ff;
     border-right: 6px solid #ff00ff;
-    box-shadow: 0 0 25px rgba(255, 0, 255, 0.4);
+    box-shadow: 0 0 25px rgba(255, 0, 255, 0.2);
 }
 
 .stat-row {
@@ -170,14 +167,13 @@
     text-align: right;
 }
 
-/* Leaderboard Panel */
 .leaderboard-panel {
-    background: rgba(0, 0, 0, 0.92);
+    background: rgba(0, 0, 0, 0.6);
     padding: 20px;
     border: 3px solid #00ffff;
     border-top: 8px solid #00ffff;
     min-width: 320px;
-    box-shadow: 0 0 40px rgba(0, 255, 255, 0.5), inset 0 0 30px rgba(0, 255, 255, 0.05);
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.3), inset 0 0 30px rgba(0, 255, 255, 0.05);
 }
 
 .panel-header {
@@ -215,7 +211,7 @@
     display: flex;
     justify-content: space-between;
     padding: 12px 16px;
-    background: linear-gradient(90deg, rgba(0, 255, 255, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%);
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
     border-left: 4px solid;
     font-size: 1rem;
     font-weight: 700;
@@ -240,10 +236,10 @@
 }
 
 .leaderboard-item.me {
-    background: linear-gradient(90deg, rgba(255, 0, 255, 0.3) 0%, rgba(0, 0, 0, 0.9) 100%);
+    background: linear-gradient(90deg, rgba(255, 0, 255, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
     border-color: #ff00ff;
     font-weight: 900;
-    box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
 }
 
 /* Crosshair */
