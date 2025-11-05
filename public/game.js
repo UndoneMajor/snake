@@ -235,10 +235,20 @@ function updateCamera() {
 
 // Game loop
 function gameLoop() {
+    updatePlayerAngle(); // Update angle every frame
     handleMovement();
     updateCamera();
     draw();
     requestAnimationFrame(gameLoop);
+}
+
+// Always update angle to mouse
+function updatePlayerAngle() {
+    const player = players[myPlayerId];
+    if (!player) return;
+    
+    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    player.angle = angle;
 }
 
 const INTERPOLATION_SPEED = 0.3;
@@ -263,9 +273,8 @@ function handleMovement() {
         dy *= 0.707;
     }
 
-    // ALWAYS update angle to mouse (every frame for smooth aiming)
-    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    player.angle = angle; // This ensures indicator always follows mouse
+    // Get current angle (already updated in updatePlayerAngle)
+    const angle = player.angle;
 
     // Move locally
     if (dx !== 0 || dy !== 0) {
