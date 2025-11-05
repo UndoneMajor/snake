@@ -20,6 +20,9 @@ const classModal = document.getElementById('classModal');
 const playerClassElement = document.getElementById('playerClass');
 const pingElement = document.getElementById('ping');
 const pingIndicator = document.getElementById('pingIndicator');
+const reserveElement = document.getElementById('reserve');
+const reloadIndicator = document.getElementById('reloadIndicator');
+const reloadProgress = document.getElementById('reloadProgress');
 
 let lastPingTime = 0;
 let currentPing = 0;
@@ -56,10 +59,13 @@ let myClass = null;
 let classConfig = null;
 
 const CLASS_CONFIGS = {
-    shotgun: { fireRate: 500, icon: '🔫' },
-    sniper: { fireRate: 700, icon: '🎯' },
-    rifle: { fireRate: 80, icon: '💥' }
+    shotgun: { fireRate: 500, icon: '🔫', reloadTime: 2000 },
+    sniper: { fireRate: 700, icon: '🎯', reloadTime: 2500 },
+    rifle: { fireRate: 80, icon: '💥', reloadTime: 1500 }
 };
+
+let isReloading = false;
+let reloadStartTime = 0;
 
 function collidesWithWall(x, y, size = 30) {
     const halfSize = size / 2;
@@ -209,6 +215,10 @@ function addKillMessage(message) {
 
 document.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
+    
+    if (e.key.toLowerCase() === 'r') {
+        reload();
+    }
 });
 
 document.addEventListener('keyup', (e) => {
@@ -381,8 +391,32 @@ function handleMovement() {
 let lastShot = 0;
 let localBulletId = 0;
 
+function reload() {
+    const player = players[myPlayerId];
+    if (!player || isReloading || !classConfig) return;
+    if (player.ammo === classConfig.maxAmmo || player.reserve <= 0) return;
+
+    isReloading = true;
+    reloadStartTime = Date.now();
+    reloadIndicator.style.display = 'block';
+    socket.emit('reload');
+
+    const interval = setInterval(() => {
+        const elapsed = Date.now() - reloadStartTime;
+        const progress = Math.min((elapsed / classConfig.reloadTime) * 100, 100);
+        reloadProgress.style.width = progress + '%';
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+            isReloading = false;
+            reloadIndicator.style.display = 'none';
+            reloadProgress.style.width = '0%';
+        }
+    }, 50);
+}
+
 function shoot() {
-    if (!classConfig) return;
+    if (!classConfig || isReloading) return;
     
     const now = Date.now();
     if (now - lastShot < classConfig.fireRate) return;
@@ -394,9 +428,9 @@ function shoot() {
     const angle = player.angle;
 
     const serverConfig = {
-        shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3 },
-        sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0 },
-        rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05 }
+        shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, damage: 35 },
+        sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, damage: 20 },
+        rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, damage: 15 }
     };
     
     const bulletConfig = serverConfig[myClass];
@@ -558,6 +592,7 @@ function updateUI() {
     healthFill.style.width = player.health + '%';
     healthText.textContent = player.health;
     ammoElement.textContent = player.ammo;
+    reserveElement.textContent = player.reserve || 0;
     killsElement.textContent = player.kills;
     scoreElement.textContent = player.score;
 }

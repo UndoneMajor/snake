@@ -20,9 +20,40 @@ const MAP_HEIGHT = 1800;
 const PLAYER_SPEED = 3;
 
 const CLASS_CONFIGS = {
-  shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, fireRate: 500, damage: 20, maxAmmo: 20 },
-  sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, fireRate: 700, damage: 30, maxAmmo: 15 },
-  rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, fireRate: 80, damage: 15, maxAmmo: 40 }
+  shotgun: { 
+    bulletSpeed: 25, 
+    bulletCount: 3, 
+    spread: 0.3, 
+    fireRate: 500, 
+    damage: 35,
+    maxAmmo: 4,
+    maxReserve: 36,
+    reloadTime: 2000,
+    speed: PLAYER_SPEED * 1.035
+  },
+  sniper: { 
+    bulletSpeed: 50, 
+    bulletCount: 1, 
+    spread: 0, 
+    fireRate: 700, 
+    baseDamage: 20,
+    maxDamage: 60,
+    maxAmmo: 5,
+    maxReserve: 20,
+    reloadTime: 2500,
+    speed: PLAYER_SPEED
+  },
+  rifle: { 
+    bulletSpeed: 30, 
+    bulletCount: 1, 
+    spread: 0.05, 
+    fireRate: 80, 
+    damage: 15,
+    maxAmmo: 30,
+    maxReserve: 60,
+    reloadTime: 1500,
+    speed: PLAYER_SPEED * 0.95
+  }
 };
 
 const walls = [
@@ -112,11 +143,13 @@ function createBot() {
     health: 100,
     score: 0,
     kills: 0,
-    speed: PLAYER_SPEED,
+    speed: config.speed,
     ammo: config.maxAmmo,
+    reserve: config.maxReserve,
     class: botClass,
     classConfig: config,
     isBot: true,
+    isReloading: false,
     name: BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)],
     targetX: pos.x,
     targetY: pos.y,
@@ -173,7 +206,20 @@ function updateBot(botId) {
     const distToPlayer = Math.hypot(nearestPlayer.x - bot.x, nearestPlayer.y - bot.y);
     const now = Date.now();
     
-    if (distToPlayer < 400 && bot.ammo > 0 && now - bot.lastShot > bot.classConfig.fireRate) {
+    if (bot.ammo === 0 && bot.reserve > 0 && !bot.isReloading) {
+      bot.isReloading = true;
+      setTimeout(() => {
+        if (players[botId]) {
+          const needed = bot.classConfig.maxAmmo;
+          const toReload = Math.min(needed, bot.reserve);
+          bot.ammo = toReload;
+          bot.reserve -= toReload;
+          bot.isReloading = false;
+        }
+      }, bot.classConfig.reloadTime);
+    }
+    
+    if (distToPlayer < 400 && bot.ammo > 0 && !bot.isReloading && now - bot.lastShot > bot.classConfig.fireRate) {
       bot.lastShot = now;
       bot.ammo--;
       
@@ -182,6 +228,8 @@ function updateBot(botId) {
         if (bot.classConfig.bulletCount > 1) {
           angle += (i - (bot.classConfig.bulletCount - 1) / 2) * bot.classConfig.spread;
         }
+
+        const damage = bot.class === 'sniper' ? bot.classConfig.baseDamage : bot.classConfig.damage;
 
         const bulletId = `bullet_${bulletIdCounter++}`;
         bullets[bulletId] = {
@@ -194,8 +242,10 @@ function updateBot(botId) {
           velocityY: Math.sin(angle) * bot.classConfig.bulletSpeed,
           ownerId: botId,
           color: bot.color,
-          damage: bot.classConfig.damage,
-          class: bot.class
+          damage: damage,
+          class: bot.class,
+          startX: bot.x,
+          startY: bot.y
         };
         io.emit('bulletFired', bullets[bulletId]);
       }
@@ -209,10 +259,13 @@ function updateBot(botId) {
       switch(powerUp.type) {
         case 'health': bot.health = Math.min(100, bot.health + 30); break;
         case 'speed': 
-          bot.speed = PLAYER_SPEED + 2;
-          setTimeout(() => { if (players[botId]) players[botId].speed = PLAYER_SPEED; }, 5000);
+          const baseSpeed = bot.classConfig.speed;
+          bot.speed = baseSpeed * 1.3;
+          setTimeout(() => { if (players[botId]) players[botId].speed = baseSpeed; }, 5000);
           break;
-        case 'ammo': bot.ammo += 10; break;
+        case 'ammo': 
+          bot.reserve = Math.min(bot.classConfig.maxReserve, bot.reserve + bot.classConfig.maxAmmo);
+          break;
       }
       delete powerUps[powerUp.id];
       io.emit('powerUpCollected', powerUp.id);
@@ -260,10 +313,12 @@ io.on('connection', (socket) => {
       health: 100,
       score: 0,
       kills: 0,
-      speed: PLAYER_SPEED,
+      speed: config.speed,
       ammo: config.maxAmmo,
+      reserve: config.maxReserve,
       class: playerClass,
-      classConfig: config
+      classConfig: config,
+      isReloading: false
     };
 
     socket.emit('init', {
@@ -286,9 +341,26 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('reload', () => {
+    const player = players[socket.id];
+    if (!player || player.isReloading || player.ammo === player.classConfig.maxAmmo || player.reserve <= 0) return;
+
+    player.isReloading = true;
+    
+    setTimeout(() => {
+      if (players[socket.id]) {
+        const needed = player.classConfig.maxAmmo - player.ammo;
+        const toReload = Math.min(needed, player.reserve);
+        player.ammo += toReload;
+        player.reserve -= toReload;
+        player.isReloading = false;
+      }
+    }, player.classConfig.reloadTime);
+  });
+
   socket.on('shoot', (data) => {
     const player = players[socket.id];
-    if (!player || player.ammo <= 0) return;
+    if (!player || player.ammo <= 0 || player.isReloading) return;
 
     player.ammo--;
     const config = player.classConfig;
@@ -302,6 +374,8 @@ io.on('connection', (socket) => {
       }
 
       const bulletId = `bullet_${bulletIdCounter++}`;
+      const damage = player.class === 'sniper' ? config.baseDamage : config.damage;
+
       bullets[bulletId] = {
         id: bulletId,
         x: player.x,
@@ -312,8 +386,10 @@ io.on('connection', (socket) => {
         velocityY: Math.sin(angle) * config.bulletSpeed,
         ownerId: socket.id,
         color: player.color,
-        damage: config.damage,
-        class: player.class
+        damage: damage,
+        class: player.class,
+        startX: player.x,
+        startY: player.y
       };
 
       io.emit('bulletFired', bullets[bulletId]);
@@ -328,10 +404,13 @@ io.on('connection', (socket) => {
     switch(powerUp.type) {
       case 'health': player.health = Math.min(100, player.health + 30); break;
       case 'speed': 
-        player.speed = PLAYER_SPEED + 2;
-        setTimeout(() => { if (players[socket.id]) players[socket.id].speed = PLAYER_SPEED; }, 5000);
+        const baseSpeed = player.classConfig.speed;
+        player.speed = baseSpeed * 1.3;
+        setTimeout(() => { if (players[socket.id]) players[socket.id].speed = baseSpeed; }, 5000);
         break;
-      case 'ammo': player.ammo += 10; break;
+      case 'ammo': 
+        player.reserve = Math.min(player.classConfig.maxReserve, player.reserve + player.classConfig.maxAmmo);
+        break;
     }
     delete powerUps[id];
     io.emit('powerUpCollected', id);
@@ -384,7 +463,16 @@ setInterval(() => {
       const dy = p.y - b.y;
       
       if (dx * dx + dy * dy < 225) {
-        p.health -= b.damage;
+        let damage = b.damage;
+        
+        if (b.class === 'sniper' && b.startX && b.startY) {
+          const travelDist = Math.hypot(b.x - b.startX, b.y - b.startY);
+          const distMultiplier = Math.min(travelDist / 500, 1);
+          const config = CLASS_CONFIGS.sniper;
+          damage = config.baseDamage + (config.maxDamage - config.baseDamage) * distMultiplier;
+        }
+        
+        p.health -= damage;
         
         if (p.health <= 0) {
           if (players[b.ownerId]) {
