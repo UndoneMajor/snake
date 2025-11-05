@@ -94,48 +94,44 @@ socket.on('bulletFired', (bullet) => {
     bullets[bullet.id] = bullet;
 });
 
-// Game state updates - client authoritative for self
-socket.on('gameState', (data) => {
+// FAST update handler - 60 FPS
+socket.on('update', (data) => {
+    // Update other players only
     Object.keys(data.players).forEach(id => {
-        const serverPlayer = data.players[id];
-        
         if (id === myPlayerId) {
-            // Update ONLY non-position/angle data from server
+            // Only update stats, NEVER position/angle
             if (players[id]) {
-                players[id].health = serverPlayer.health;
-                players[id].ammo = serverPlayer.ammo;
-                players[id].kills = serverPlayer.kills;
-                players[id].score = serverPlayer.score;
-                players[id].speed = serverPlayer.speed;
-                players[id].class = serverPlayer.class;
-                players[id].color = serverPlayer.color;
-                // DO NOT update x, y, angle - client controls these for smooth aiming
-            } else {
-                players[id] = { ...serverPlayer };
+                players[id].health = data.players[id].health;
+                players[id].ammo = data.players[id].ammo;
+                players[id].kills = data.players[id].kills;
+                players[id].score = data.players[id].score;
+                players[id].speed = data.players[id].speed;
             }
         } else {
-            // Other players - use server position with interpolation
-            if (players[id]) {
-                players[id].targetX = serverPlayer.x;
-                players[id].targetY = serverPlayer.y;
-                players[id].angle = serverPlayer.angle;
-                players[id].health = serverPlayer.health;
-                players[id].ammo = serverPlayer.ammo;
-                players[id].kills = serverPlayer.kills;
-                players[id].score = serverPlayer.score;
-                players[id].class = serverPlayer.class;
-                players[id].color = serverPlayer.color;
-            } else {
-                players[id] = { ...serverPlayer };
-                players[id].targetX = serverPlayer.x;
-                players[id].targetY = serverPlayer.y;
+            // Other players
+            if (!players[id]) {
+                players[id] = { ...data.players[id] };
             }
+            players[id].targetX = data.players[id].x;
+            players[id].targetY = data.players[id].y;
+            players[id].angle = data.players[id].angle;
+            players[id].health = data.players[id].health;
+            players[id].ammo = data.players[id].ammo;
+            players[id].color = data.players[id].color;
+            players[id].class = data.players[id].class;
         }
     });
     
     bullets = data.bullets || {};
-    updateUI();
-    updateLeaderboard();
+});
+
+// Update UI less frequently
+let uiUpdateCounter = 0;
+socket.on('update', () => {
+    if (++uiUpdateCounter % 3 === 0) { // Every 3rd update
+        updateUI();
+        updateLeaderboard();
+    }
 });
 
 // Power-ups
@@ -196,18 +192,20 @@ document.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
 });
 
-// Update mouse position constantly
-function updateMousePosition(e) {
+// Track raw mouse position
+let rawMouse = { x: 0, y: 0 };
+
+canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    // Convert screen to world coordinates
-    mouse.x = (e.clientX - rect.left) + camera.x;
-    mouse.y = (e.clientY - rect.top) + camera.y;
-}
+    rawMouse.x = e.clientX - rect.left;
+    rawMouse.y = e.clientY - rect.top;
+});
 
-canvas.addEventListener('mousemove', updateMousePosition);
-
-// Also update on mouse enter to catch initial position
-canvas.addEventListener('mouseenter', updateMousePosition);
+canvas.addEventListener('mouseenter', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    rawMouse.x = e.clientX - rect.left;
+    rawMouse.y = e.clientY - rect.top;
+});
 
 canvas.addEventListener('mousedown', (e) => {
     if (e.button === 0) { // Left click
@@ -248,21 +246,21 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Always update angle to mouse - recalculate world position
+// ALWAYS update angle to mouse - with LIVE world coordinates
 function updatePlayerAngle() {
     const player = players[myPlayerId];
     if (!player) return;
     
-    // Recalculate mouse world position based on current camera
-    // This ensures angle is always correct even if camera moved
-    const worldMouseX = mouse.x;
-    const worldMouseY = mouse.y;
+    // Convert raw mouse to world coordinates LIVE (not cached)
+    const worldMouseX = rawMouse.x + camera.x;
+    const worldMouseY = rawMouse.y + camera.y;
     
+    // Calculate angle from player to mouse in world space
     const angle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
     player.angle = angle;
 }
 
-const INTERPOLATION_SPEED = 0.3;
+const INTERPOLATION_SPEED = 0.5; // Faster interpolation
 let lastMoveUpdate = 0;
 let lastMinimapUpdate = 0;
 
@@ -307,16 +305,12 @@ function handleMovement() {
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
     }
     
-    // Throttled position send (10 times/sec instead of 60)
-    const now = Date.now();
-    if (now - lastMoveUpdate > 100) {
-        socket.emit('updatePosition', {
-            x: player.x,
-            y: player.y,
-            angle: angle
-        });
-        lastMoveUpdate = now;
-    }
+    // Send position every frame for max responsiveness
+    socket.emit('updatePosition', {
+        x: player.x,
+        y: player.y,
+        angle: angle
+    });
 
     // Interpolate others
     Object.keys(players).forEach(id => {
@@ -347,14 +341,14 @@ function shoot() {
     if (!classConfig) return;
     
     const now = Date.now();
-    if (now - lastShot < classConfig.fireRate) return; // Fire rate limit based on class
+    if (now - lastShot < classConfig.fireRate) return;
     lastShot = now;
 
     const player = players[myPlayerId];
     if (!player || player.ammo <= 0) return;
 
-    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    socket.emit('shoot', { angle });
+    // Use player's current angle (already calculated)
+    socket.emit('shoot', { angle: player.angle });
 }
 
 function draw() {
@@ -499,11 +493,9 @@ function draw() {
     // Restore context
     ctx.restore();
 
-    // Draw minimap (only 10 times/sec)
-    const now = Date.now();
-    if (now - lastMinimapUpdate > 100) {
+    // Draw minimap every 5 frames (12 FPS)
+    if (Math.random() < 0.2) {
         drawMinimap();
-        lastMinimapUpdate = now;
     }
 }
 

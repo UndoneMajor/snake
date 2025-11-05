@@ -5,23 +5,26 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+const io = socketIO(server, {
+  pingInterval: 25000,
+  pingTimeout: 60000,
+  upgradeTimeout: 30000,
+  perMessageDeflate: false // Disable compression for speed
+});
 
 const PORT = process.env.PORT || 3000;
-
 app.use(express.static('public'));
 
 // Game constants
 const MAP_WIDTH = 2400;
 const MAP_HEIGHT = 1800;
-const PLAYER_SIZE = 30;
 const PLAYER_SPEED = 3;
 
-// Class configs - MUCH faster bullets
+// ULTRA FAST bullets
 const CLASS_CONFIGS = {
-  shotgun: { bulletSpeed: 20, bulletCount: 3, spread: 0.3, fireRate: 600, damage: 20, maxAmmo: 20 },
-  sniper: { bulletSpeed: 40, bulletCount: 1, spread: 0, fireRate: 800, damage: 30, maxAmmo: 15 },
-  rifle: { bulletSpeed: 25, bulletCount: 1, spread: 0.05, fireRate: 100, damage: 15, maxAmmo: 40 }
+  shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, fireRate: 500, damage: 20, maxAmmo: 20 },
+  sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, fireRate: 700, damage: 30, maxAmmo: 15 },
+  rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, fireRate: 80, damage: 15, maxAmmo: 40 }
 };
 
 // Walls
@@ -48,37 +51,35 @@ const powerUps = {};
 let bulletIdCounter = 0;
 let powerUpIdCounter = 0;
 
-// Fixed spawn points (verified safe - avoiding ALL walls)
+// Safe spawn points
 const SPAWN_POINTS = [
-  { x: 100, y: 100 },       // Top-left (clear)
-  { x: 2300, y: 100 },      // Top-right (clear)
-  { x: 100, y: 1700 },      // Bottom-left (clear)
-  { x: 2300, y: 1700 },     // Bottom-right (clear)
-  { x: 1200, y: 900 },      // Center (clear)
-  { x: 200, y: 500 },       // Left mid (clear, wall at 400,200)
-  { x: 2200, y: 500 },      // Right mid (clear)
-  { x: 700, y: 150 },       // Top area (clear, wall at 400,200 ends at 600)
-  { x: 1700, y: 150 },      // Top-right area (clear, wall at 1800,300)
-  { x: 200, y: 1000 },      // Left lower (clear)
-  { x: 2100, y: 1000 },     // Right lower (clear, wall at 1600,800)
-  { x: 900, y: 600 }        // Mid area (clear, between walls)
+  { x: 100, y: 100 },
+  { x: 2300, y: 100 },
+  { x: 100, y: 1700 },
+  { x: 2300, y: 1700 },
+  { x: 1200, y: 900 },
+  { x: 200, y: 500 },
+  { x: 2200, y: 500 },
+  { x: 700, y: 150 },
+  { x: 1700, y: 150 },
+  { x: 200, y: 1000 },
+  { x: 2100, y: 1000 },
+  { x: 900, y: 600 }
 ];
 
 let lastSpawnIndex = 0;
 
 function getSpawnPosition() {
-  // Cycle through spawn points
   const spawn = SPAWN_POINTS[lastSpawnIndex];
   lastSpawnIndex = (lastSpawnIndex + 1) % SPAWN_POINTS.length;
   return { ...spawn };
 }
 
 function randomPosition() {
-  // For power-ups, still use random but avoid walls
-  let x, y;
-  x = Math.random() * (MAP_WIDTH - 100) + 50;
-  y = Math.random() * (MAP_HEIGHT - 100) + 50;
-  return { x, y };
+  return {
+    x: Math.random() * (MAP_WIDTH - 100) + 50,
+    y: Math.random() * (MAP_HEIGHT - 100) + 50
+  };
 }
 
 function spawnPowerUp() {
@@ -94,14 +95,31 @@ function spawnPowerUp() {
 setInterval(spawnPowerUp, 10000);
 for (let i = 0; i < 3; i++) spawnPowerUp();
 
+// Optimized wall collision
+const wallCache = new Map();
+function collidesWithWall(x, y, size = 10) {
+  const key = `${Math.floor(x/50)},${Math.floor(y/50)}`;
+  const halfSize = size / 2;
+  
+  for (let wall of walls) {
+    if (x + halfSize > wall.x && 
+        x - halfSize < wall.x + wall.width && 
+        y + halfSize > wall.y && 
+        y - halfSize < wall.y + wall.height) {
+      return true;
+    }
+  }
+  return false;
+}
+
 io.on('connection', (socket) => {
-  console.log(`🎮 Player connected: ${socket.id}`);
+  console.log(`🎮 ${socket.id}`);
 
   socket.on('selectClass', (playerClass) => {
     if (!CLASS_CONFIGS[playerClass]) return;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-    const pos = getSpawnPosition(); // Use fixed spawn instead of random
+    const pos = getSpawnPosition();
     const config = CLASS_CONFIGS[playerClass];
     
     players[socket.id] = {
@@ -111,10 +129,8 @@ io.on('connection', (socket) => {
       angle: 0,
       color: colors[Math.floor(Math.random() * colors.length)],
       health: 100,
-      maxHealth: 100,
       score: 0,
       kills: 0,
-      deaths: 0,
       speed: PLAYER_SPEED,
       ammo: config.maxAmmo,
       class: playerClass,
@@ -132,10 +148,8 @@ io.on('connection', (socket) => {
     });
 
     socket.broadcast.emit('playerJoined', players[socket.id]);
-    console.log(`✅ ${playerClass}: ${socket.id}`);
   });
 
-  // Simple position update - trust client
   socket.on('updatePosition', (data) => {
     if (players[socket.id]) {
       players[socket.id].x = data.x;
@@ -152,143 +166,110 @@ io.on('connection', (socket) => {
     const config = player.classConfig;
 
     for (let i = 0; i < config.bulletCount; i++) {
-      const bulletId = `bullet_${bulletIdCounter++}`;
       let angle = data.angle;
-      
       if (config.bulletCount > 1) {
         angle += (i - (config.bulletCount - 1) / 2) * config.spread;
       } else if (config.spread > 0) {
         angle += (Math.random() - 0.5) * config.spread;
       }
 
+      const bulletId = `bullet_${bulletIdCounter++}`;
       bullets[bulletId] = {
         id: bulletId,
         x: player.x,
         y: player.y,
-        velocityX: Math.cos(angle) * config.bulletSpeed,
-        velocityY: Math.sin(angle) * config.bulletSpeed,
+        vx: Math.cos(angle) * config.bulletSpeed,
+        vy: Math.sin(angle) * config.bulletSpeed,
         ownerId: socket.id,
         color: player.color,
         damage: config.damage,
         class: player.class
       };
-
-      io.emit('bulletFired', bullets[bulletId]);
     }
   });
 
-  socket.on('collectPowerUp', (powerUpId) => {
+  socket.on('collectPowerUp', (id) => {
     const player = players[socket.id];
-    const powerUp = powerUps[powerUpId];
+    const powerUp = powerUps[id];
     if (!player || !powerUp) return;
 
     switch(powerUp.type) {
-      case 'health':
-        player.health = Math.min(100, player.health + 30);
-        break;
-      case 'speed':
+      case 'health': player.health = Math.min(100, player.health + 30); break;
+      case 'speed': 
         player.speed = PLAYER_SPEED + 2;
-        setTimeout(() => { 
-          if (players[socket.id]) players[socket.id].speed = PLAYER_SPEED; 
-        }, 5000);
+        setTimeout(() => { if (players[socket.id]) players[socket.id].speed = PLAYER_SPEED; }, 5000);
         break;
-      case 'ammo':
-        player.ammo += 10;
-        break;
+      case 'ammo': player.ammo += 10; break;
     }
-
-    delete powerUps[powerUpId];
-    io.emit('powerUpCollected', powerUpId);
+    delete powerUps[id];
+    io.emit('powerUpCollected', id);
   });
 
   socket.on('disconnect', () => {
-    console.log(`👋 Disconnect: ${socket.id}`);
     delete players[socket.id];
     io.emit('playerLeft', socket.id);
   });
 });
 
-// Wall collision check
-function collidesWithWall(x, y, size = 10) {
-  const halfSize = size / 2;
-  for (let wall of walls) {
-    if (x + halfSize > wall.x && 
-        x - halfSize < wall.x + wall.width && 
-        y + halfSize > wall.y && 
-        y - halfSize < wall.y + wall.height) {
-      return true;
+// ULTRA OPTIMIZED game loop - 60 FPS
+const PLAYER_KEYS = () => Object.keys(players);
+const BULLET_KEYS = () => Object.keys(bullets);
+
+setInterval(() => {
+  const bulletKeys = BULLET_KEYS();
+  const playerKeys = PLAYER_KEYS();
+  
+  // Update bullets
+  for (let i = 0; i < bulletKeys.length; i++) {
+    const bid = bulletKeys[i];
+    const b = bullets[bid];
+    if (!b) continue;
+    
+    b.x += b.vx;
+    b.y += b.vy;
+
+    // Bounds check
+    if (b.x < 0 || b.x > MAP_WIDTH || b.y < 0 || b.y > MAP_HEIGHT || collidesWithWall(b.x, b.y, 10)) {
+      delete bullets[bid];
+      continue;
+    }
+
+    // Hit check
+    for (let j = 0; j < playerKeys.length; j++) {
+      const pid = playerKeys[j];
+      if (pid === b.ownerId) continue;
+      
+      const p = players[pid];
+      if (!p) continue;
+      
+      const dx = p.x - b.x;
+      const dy = p.y - b.y;
+      
+      if (dx * dx + dy * dy < 225) {
+        p.health -= b.damage;
+        
+        if (p.health <= 0) {
+          if (players[b.ownerId]) {
+            players[b.ownerId].kills++;
+            players[b.ownerId].score += 100;
+          }
+          io.to(pid).emit('youDied', {
+            killerId: b.ownerId,
+            killerClass: players[b.ownerId]?.class
+          });
+          delete players[pid];
+          io.emit('playerKilled', { killerId: b.ownerId, victimId: pid });
+        }
+        delete bullets[bid];
+        break;
+      }
     }
   }
-  return false;
-}
 
-// Game loop - bullets only
-setInterval(() => {
-  Object.keys(bullets).forEach(bulletId => {
-    const bullet = bullets[bulletId];
-    if (!bullet) return;
-    
-    bullet.x += bullet.velocityX;
-    bullet.y += bullet.velocityY;
-
-    // Remove out of bounds
-    if (bullet.x < 0 || bullet.x > MAP_WIDTH || bullet.y < 0 || bullet.y > MAP_HEIGHT) {
-      delete bullets[bulletId];
-      return;
-    }
-
-    // Check wall collision
-    if (collidesWithWall(bullet.x, bullet.y, 10)) {
-      delete bullets[bulletId];
-      return;
-    }
-
-    // Check player hits
-    Object.keys(players).forEach(playerId => {
-      if (playerId === bullet.ownerId) return;
-      const player = players[playerId];
-      if (!player) return;
-      
-      const dx = player.x - bullet.x;
-      const dy = player.y - bullet.y;
-      
-      if (dx * dx + dy * dy < 225) { // Hit radius
-        player.health -= bullet.damage;
-        
-        if (player.health <= 0) {
-          player.deaths++;
-          if (players[bullet.ownerId]) {
-            players[bullet.ownerId].kills++;
-            players[bullet.ownerId].score += 100;
-          }
-
-          // Notify player they died
-          io.to(playerId).emit('youDied', {
-            killerId: bullet.ownerId,
-            killerClass: players[bullet.ownerId]?.class
-          });
-
-          // Remove player from game (they'll rejoin via class selection)
-          delete players[playerId];
-
-          io.emit('playerKilled', {
-            killerId: bullet.ownerId,
-            victimId: playerId
-          });
-        }
-
-        delete bullets[bulletId];
-      }
-    });
-  });
-
-  // Broadcast at 20 FPS (reduced from 30)
-  io.emit('gameState', {
-    players: players,
-    bullets: bullets
-  });
-}, 50); // 20 FPS - better performance
+  // Broadcast at 60 FPS
+  io.emit('update', { players, bullets });
+}, 16); // 60 FPS
 
 server.listen(PORT, () => {
-  console.log(`\n🎮 Server Running: http://localhost:${PORT}\n`);
+  console.log(`\n🎮 Server: http://localhost:${PORT}\n`);
 });
