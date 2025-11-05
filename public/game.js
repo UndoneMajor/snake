@@ -542,10 +542,16 @@ function reload() {
 
 function shoot() {
     const player = players[myPlayerId];
-    if (!classConfig || isReloading) return;
+    if (!classConfig || isReloading) {
+        if (player) player.isShooting = false;
+        return;
+    }
     if (!player || player.ammo <= 0) {
-        if (player && player.reserve > 0 && !isReloading) {
-            reload();
+        if (player) {
+            player.isShooting = false;
+            if (player.reserve > 0 && !isReloading) {
+                reload();
+            }
         }
         socket.emit('shootEnd');
         return;
@@ -593,7 +599,8 @@ function shoot() {
             socket.emit('clientHit', { 
                 victimId: hitPlayer.id, 
                 bulletAngle: bulletAngle,
-                timestamp: Date.now() - (currentPing / 2)
+                timestamp: Date.now() - (currentPing / 2),
+                weaponClass: myClass
             });
         }
     }
@@ -602,6 +609,8 @@ function shoot() {
 
     if (myClass !== 'pyro') {
         socket.emit('shoot', { angle: angle });
+    } else {
+        socket.emit('pyroShot');
     }
 }
 
@@ -674,7 +683,7 @@ function draw() {
         ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
         ctx.fill();
 
-        if (player.class === 'pyro' && player.isShooting) {
+        if (player.class === 'pyro' && player.isShooting && !player.isReloading && player.ammo > 0) {
             const flameRange = 150;
             const coneWidth = 0.5;
             

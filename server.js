@@ -435,6 +435,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('pyroShot', () => {
+    const player = players[socket.id];
+    if (!player || player.ammo <= 0 || player.isReloading) return;
+    player.ammo--;
+  });
+
   socket.on('shoot', (data) => {
     const player = players[socket.id];
     if (!player || player.ammo <= 0 || player.isReloading) return;
