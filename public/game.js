@@ -50,10 +50,34 @@ socket.on('foodEaten', (data) => {
 });
 
 // Handle player death
-socket.on('playerDied', (playerId) => {
+socket.on('playerDied', (data) => {
+    const playerId = typeof data === 'string' ? data : data.playerId;
+    
     if (playerId === myPlayerId) {
         const myPlayer = players[myPlayerId];
         finalScoreElement.textContent = myPlayer ? myPlayer.score : 0;
+        
+        // Show death message
+        const deathMsg = document.createElement('p');
+        deathMsg.style.fontSize = '1.2rem';
+        deathMsg.style.marginTop = '1rem';
+        
+        if (data.type === 'collision' && data.killer) {
+            deathMsg.textContent = '💥 Crashed into another player!';
+            deathMsg.style.color = '#ff6b6b';
+        } else if (data.type === 'self') {
+            deathMsg.textContent = '🔄 You ran into yourself!';
+            deathMsg.style.color = '#ffa500';
+        } else {
+            deathMsg.textContent = '🧱 Hit the wall!';
+            deathMsg.style.color = '#888';
+        }
+        
+        const existingMsg = gameOverElement.querySelector('p:last-of-type');
+        if (existingMsg.textContent.includes('Final Score')) {
+            existingMsg.insertAdjacentElement('afterend', deathMsg);
+        }
+        
         gameOverElement.classList.remove('hidden');
     }
 });

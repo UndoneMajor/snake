@@ -123,10 +123,31 @@ setInterval(() => {
     for (let segment of player.snake) {
       if (head.x === segment.x && head.y === segment.y) {
         player.alive = false;
-        io.emit('playerDied', playerId);
+        io.emit('playerDied', { playerId, killer: null, type: 'self' });
         return;
       }
     }
+
+    // Check collision with other players' bodies
+    Object.keys(players).forEach((otherPlayerId) => {
+      if (otherPlayerId === playerId) return; // Skip self
+      
+      const otherPlayer = players[otherPlayerId];
+      if (!otherPlayer.alive) return; // Skip dead players
+      
+      // Check if current player's head hits another player's body
+      for (let segment of otherPlayer.snake) {
+        if (head.x === segment.x && head.y === segment.y) {
+          player.alive = false;
+          io.emit('playerDied', { 
+            playerId, 
+            killer: otherPlayerId, 
+            type: 'collision' 
+          });
+          return;
+        }
+      }
+    });
 
     // Add new head
     player.snake.unshift(head);
