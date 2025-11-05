@@ -180,11 +180,16 @@ io.on('connection', (socket) => {
         y: player.y,
         vx: Math.cos(angle) * config.bulletSpeed,
         vy: Math.sin(angle) * config.bulletSpeed,
+        velocityX: Math.cos(angle) * config.bulletSpeed,
+        velocityY: Math.sin(angle) * config.bulletSpeed,
         ownerId: socket.id,
         color: player.color,
         damage: config.damage,
         class: player.class
       };
+
+      // Broadcast immediately to all clients
+      io.emit('bulletFired', bullets[bulletId]);
     }
   });
 
@@ -260,6 +265,9 @@ setInterval(() => {
           delete players[pid];
           io.emit('playerKilled', { killerId: b.ownerId, victimId: pid });
         }
+        
+        // Tell all clients to remove this bullet
+        io.emit('bulletHit', bid);
         delete bullets[bid];
         break;
       }

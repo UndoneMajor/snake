@@ -102,8 +102,17 @@ socket.on('bulletFired', (bullet) => {
     // Skip if this is our bullet (we predicted it)
     if (bullet.ownerId === myPlayerId) return;
     
-    // Add other players' bullets
-    bullets[bullet.id] = bullet;
+    // Add other players' bullets with velocity
+    bullets[bullet.id] = {
+        ...bullet,
+        vx: bullet.velocityX || bullet.vx,
+        vy: bullet.velocityY || bullet.vy
+    };
+});
+
+// Remove bullet when server confirms hit
+socket.on('bulletHit', (bulletId) => {
+    delete bullets[bulletId];
 });
 
 // FAST update handler - 60 FPS
