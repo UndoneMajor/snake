@@ -196,12 +196,18 @@ document.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
 });
 
-canvas.addEventListener('mousemove', (e) => {
+// Update mouse position constantly
+function updateMousePosition(e) {
     const rect = canvas.getBoundingClientRect();
-    // Convert screen coordinates to world coordinates
-    mouse.x = e.clientX - rect.left + camera.x;
-    mouse.y = e.clientY - rect.top + camera.y;
-});
+    // Convert screen to world coordinates
+    mouse.x = (e.clientX - rect.left) + camera.x;
+    mouse.y = (e.clientY - rect.top) + camera.y;
+}
+
+canvas.addEventListener('mousemove', updateMousePosition);
+
+// Also update on mouse enter to catch initial position
+canvas.addEventListener('mouseenter', updateMousePosition);
 
 canvas.addEventListener('mousedown', (e) => {
     if (e.button === 0) { // Left click
@@ -242,12 +248,17 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Always update angle to mouse
+// Always update angle to mouse - recalculate world position
 function updatePlayerAngle() {
     const player = players[myPlayerId];
     if (!player) return;
     
-    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    // Recalculate mouse world position based on current camera
+    // This ensures angle is always correct even if camera moved
+    const worldMouseX = mouse.x;
+    const worldMouseY = mouse.y;
+    
+    const angle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
     player.angle = angle;
 }
 

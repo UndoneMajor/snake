@@ -17,11 +17,11 @@ const MAP_HEIGHT = 1800;
 const PLAYER_SIZE = 30;
 const PLAYER_SPEED = 3;
 
-// Class configs - faster bullets
+// Class configs - MUCH faster bullets
 const CLASS_CONFIGS = {
-  shotgun: { bulletSpeed: 14, bulletCount: 3, spread: 0.3, fireRate: 600, damage: 20, maxAmmo: 20 },
-  sniper: { bulletSpeed: 28, bulletCount: 1, spread: 0, fireRate: 800, damage: 30, maxAmmo: 15 },
-  rifle: { bulletSpeed: 18, bulletCount: 1, spread: 0.05, fireRate: 100, damage: 15, maxAmmo: 40 }
+  shotgun: { bulletSpeed: 20, bulletCount: 3, spread: 0.3, fireRate: 600, damage: 20, maxAmmo: 20 },
+  sniper: { bulletSpeed: 40, bulletCount: 1, spread: 0, fireRate: 800, damage: 30, maxAmmo: 15 },
+  rifle: { bulletSpeed: 25, bulletCount: 1, spread: 0.05, fireRate: 100, damage: 15, maxAmmo: 40 }
 };
 
 // Walls
