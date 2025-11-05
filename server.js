@@ -30,7 +30,7 @@ const CLASS_CONFIGS = {
     maxAmmo: 4,
     maxReserve: 36,
     reloadTime: 2000,
-    speed: PLAYER_SPEED * 1.035
+    speed: PLAYER_SPEED * 1.15
   },
   sniper: { 
     bulletSpeed: 50, 
@@ -53,7 +53,7 @@ const CLASS_CONFIGS = {
     maxAmmo: 30,
     maxReserve: 60,
     reloadTime: 1500,
-    speed: PLAYER_SPEED * 0.95
+    speed: PLAYER_SPEED * 0.85
   }
 };
 

@@ -304,11 +304,17 @@ canvas.addEventListener('mouseup', (e) => {
 
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-const ZOOM_LEVEL = 1.3;
+let ZOOM_LEVEL = 1.3;
 
 function updateCamera() {
     const player = players[myPlayerId];
     if (!player) return;
+
+    if (player.class === 'sniper') {
+        ZOOM_LEVEL = 1.1;
+    } else {
+        ZOOM_LEVEL = 1.3;
+    }
 
     camera.x = player.x - (canvas.width / ZOOM_LEVEL) / 2;
     camera.y = player.y - (canvas.height / ZOOM_LEVEL) / 2;
