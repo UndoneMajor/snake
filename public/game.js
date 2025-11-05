@@ -20,6 +20,31 @@ const leaderboardList = document.getElementById('leaderboardList');
 const killFeed = document.getElementById('killFeed');
 const classModal = document.getElementById('classModal');
 const playerClassElement = document.getElementById('playerClass');
+const pingElement = document.getElementById('ping');
+const pingIndicator = document.getElementById('pingIndicator');
+
+// Ping measurement
+let lastPingTime = 0;
+let currentPing = 0;
+
+setInterval(() => {
+    lastPingTime = Date.now();
+    socket.emit('ping');
+}, 2000);
+
+socket.on('pong', () => {
+    currentPing = Date.now() - lastPingTime;
+    pingElement.textContent = currentPing + 'ms';
+    
+    // Update ping indicator color
+    if (currentPing < 50) {
+        pingIndicator.className = 'ping-indicator good';
+    } else if (currentPing < 100) {
+        pingIndicator.className = 'ping-indicator medium';
+    } else {
+        pingIndicator.className = 'ping-indicator bad';
+    }
+});
 
 // Game state
 let myPlayerId = null;

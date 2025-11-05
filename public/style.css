@@ -23,7 +23,7 @@ body {
 }
 
 /* Futuristic Cyberpunk HUD */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
 
 .hud {
     position: fixed;
@@ -33,32 +33,29 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 100;
-    font-family: 'Orbitron', monospace;
+    font-family: 'Rajdhani', sans-serif;
 }
 
-.hud-top-left {
+.hud-top-center {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .hud-top-right {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 30px;
+    right: 30px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    align-items: flex-end;
+    gap: 15px;
 }
 
 .hud-bottom-right {
     position: absolute;
-    bottom: 20px;
-    right: 20px;
+    bottom: 30px;
+    right: 30px;
 }
 
 .hud-health {

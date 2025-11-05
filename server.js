@@ -210,6 +210,10 @@ io.on('connection', (socket) => {
     io.emit('powerUpCollected', id);
   });
 
+  socket.on('ping', () => {
+    socket.emit('pong');
+  });
+
   socket.on('disconnect', () => {
     delete players[socket.id];
     io.emit('playerLeft', socket.id);

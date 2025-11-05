@@ -1,0 +1,308 @@
+/* Combat HUD */
+.combat-hud {
+    display: flex;
+    gap: 40px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 40, 0.9) 100%);
+    padding: 20px 40px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.4);
+}
+
+.combat-hud::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 3px solid;
+    border-image: linear-gradient(135deg, #00ffff, #ff00ff) 1;
+    pointer-events: none;
+}
+
+.stat-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #00ffff;
+    margin-bottom: 8px;
+    text-shadow: 0 0 10px #00ffff;
+}
+
+.hp-section {
+    min-width: 300px;
+}
+
+.hp-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.hp-bar-outer {
+    flex: 1;
+    height: 35px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 3px solid #00ffff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.2), 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+.hp-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #ff0080, #00ffff);
+    transition: width 0.3s ease;
+    width: 100%;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 1);
+}
+
+.hp-scan {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: scan 1.5s linear infinite;
+}
+
+.hp-text {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #00ffff;
+    text-shadow: 0 0 15px #00ffff;
+    font-family: 'Orbitron', monospace;
+}
+
+.ammo-section {
+    min-width: 180px;
+}
+
+.ammo-display {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ammo-icon {
+    font-size: 1.5rem;
+    color: #ff00ff;
+    text-shadow: 0 0 10px #ff00ff;
+}
+
+.ammo-count {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #ff00ff;
+    text-shadow: 0 0 20px #ff00ff;
+    font-family: 'Orbitron', monospace;
+}
+
+/* Network Status */
+.network-status {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 12px 20px;
+    border: 2px solid #00ff00;
+    border-left: 6px solid #00ff00;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.ping-indicator {
+    font-size: 1.5rem;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.ping-indicator.good { color: #00ff00; }
+.ping-indicator.medium { color: #ffff00; }
+.ping-indicator.bad { color: #ff0000; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.ping-label {
+    font-size: 0.7rem;
+    color: #00ff00;
+    letter-spacing: 2px;
+}
+
+.ping-value {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #00ff00;
+    text-shadow: 0 0 10px #00ff00;
+    font-family: 'Orbitron', monospace;
+}
+
+/* Stats Panel */
+.stat-panel {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 15px 25px;
+    border: 2px solid #ff00ff;
+    border-right: 6px solid #ff00ff;
+    box-shadow: 0 0 25px rgba(255, 0, 255, 0.4);
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
+    margin: 8px 0;
+    font-size: 1.1rem;
+}
+
+.stat-label {
+    color: #ff00ff;
+    font-weight: 600;
+    letter-spacing: 2px;
+}
+
+.stat-value {
+    color: #00ffff;
+    font-weight: 900;
+    text-shadow: 0 0 10px #00ffff;
+    font-family: 'Orbitron', monospace;
+    min-width: 80px;
+    text-align: right;
+}
+
+/* Leaderboard Panel */
+.leaderboard-panel {
+    background: rgba(0, 0, 0, 0.92);
+    padding: 20px;
+    border: 3px solid #00ffff;
+    border-top: 8px solid #00ffff;
+    min-width: 320px;
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.5), inset 0 0 30px rgba(0, 255, 255, 0.05);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #00ffff;
+    text-shadow: 0 0 15px #00ffff;
+    letter-spacing: 3px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+}
+
+.header-icon {
+    font-size: 1.5rem;
+    animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.rankings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%);
+    border-left: 4px solid;
+    font-size: 1rem;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+}
+
+.leaderboard-item::before {
+    content: '';
+    position: absolute;
+    left: -100%;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.leaderboard-item.me {
+    background: linear-gradient(90deg, rgba(255, 0, 255, 0.3) 0%, rgba(0, 0, 0, 0.9) 100%);
+    border-color: #ff00ff;
+    font-weight: 900;
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+}
+
+/* Crosshair */
+.crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+}
+
+.crosshair-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 4px;
+    background: #00ffff;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+}
+
+.crosshair-line {
+    position: absolute;
+    background: #00ffff;
+    box-shadow: 0 0 5px #00ffff;
+}
+
+.crosshair-top {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 12px;
+}
+
+.crosshair-bottom {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 12px;
+}
+
+.crosshair-left {
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 2px;
+}
+
+.crosshair-right {
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 2px;
+}
+

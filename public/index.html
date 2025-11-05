@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multiplayer Shooter 🔫</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="hud.css">
 </head>
 <body>
     <!-- Class Selection Modal -->
@@ -54,57 +55,73 @@
 
     <!-- In-Game HUD -->
     <div class="hud">
-        <!-- Top Left: Health -->
-        <div class="hud-top-left">
-            <div class="hud-health">
-                <div class="health-container">
-                    <div class="health-label">HP</div>
-                    <div class="health-bar-hud">
-                        <div id="healthFill" class="health-fill"></div>
-                        <div class="health-scan"></div>
+        <!-- Top Center: Health & Ammo -->
+        <div class="hud-top-center">
+            <div class="combat-hud">
+                <div class="hp-section">
+                    <div class="stat-title">HEALTH POINTS</div>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar-outer">
+                            <div id="healthFill" class="hp-bar-inner"></div>
+                            <div class="hp-scan"></div>
+                        </div>
+                        <span id="healthText" class="hp-text">100</span>
                     </div>
-                    <span id="healthText">100</span>
                 </div>
-            </div>
-            <div class="hud-item">
-                <span class="hud-icon">▣</span>
-                <div>
-                    <div class="hud-label">AMMO</div>
-                    <span id="ammo" class="hud-value">30</span>
+                <div class="ammo-section">
+                    <div class="stat-title">AMMUNITION</div>
+                    <div class="ammo-display">
+                        <div class="ammo-icon">▣▣▣</div>
+                        <span id="ammo" class="ammo-count">30</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Top Right: Stats -->
+        <!-- Top Right: Network & Stats -->
         <div class="hud-top-right">
-            <div class="hud-item">
+            <div class="network-status">
+                <div class="ping-indicator" id="pingIndicator">●</div>
                 <div>
-                    <div class="hud-label">CLASS</div>
-                    <span id="playerClass" class="hud-value">-</span>
+                    <div class="ping-label">PING</div>
+                    <span id="ping" class="ping-value">0ms</span>
                 </div>
             </div>
-            <div class="hud-item">
-                <span class="hud-icon">✦</span>
-                <div>
-                    <div class="hud-label">KILLS</div>
-                    <span id="kills" class="hud-value">0</span>
+            <div class="stat-panel">
+                <div class="stat-row">
+                    <span class="stat-label">CLASS:</span>
+                    <span id="playerClass" class="stat-value">-</span>
                 </div>
-            </div>
-            <div class="hud-item">
-                <span class="hud-icon">◈</span>
-                <div>
-                    <div class="hud-label">SCORE</div>
-                    <span id="score" class="hud-value">0</span>
+                <div class="stat-row">
+                    <span class="stat-label">KILLS:</span>
+                    <span id="kills" class="stat-value">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">SCORE:</span>
+                    <span id="score" class="stat-value">0</span>
                 </div>
             </div>
         </div>
 
         <!-- Bottom Right: Leaderboard -->
         <div class="hud-bottom-right">
-            <div class="leaderboard-mini">
-                <h4>◆ RANKINGS ◆</h4>
-                <div id="leaderboardList"></div>
+            <div class="leaderboard-panel">
+                <div class="panel-header">
+                    <span class="header-icon">◆</span>
+                    <span>COMBAT RANKINGS</span>
+                    <span class="header-icon">◆</span>
+                </div>
+                <div id="leaderboardList" class="rankings-list"></div>
             </div>
+        </div>
+
+        <!-- Crosshair -->
+        <div class="crosshair">
+            <div class="crosshair-dot"></div>
+            <div class="crosshair-line crosshair-top"></div>
+            <div class="crosshair-line crosshair-bottom"></div>
+            <div class="crosshair-line crosshair-left"></div>
+            <div class="crosshair-line crosshair-right"></div>
         </div>
     </div>
 
