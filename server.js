@@ -67,6 +67,20 @@ const CLASS_CONFIGS = {
     speed: PLAYER_SPEED * 1.05,
     isFlame: true,
     flameRange: 150
+  },
+  soldier: {
+    bulletSpeed: 10,
+    bulletCount: 1,
+    spread: 0,
+    fireRate: 800,
+    damage: 40,
+    splashDamage: 25,
+    splashRadius: 120,
+    maxAmmo: 4,
+    maxReserve: 20,
+    reloadTime: 2000,
+    speed: PLAYER_SPEED * 0.9,
+    isRocket: true
   }
 };
 
@@ -160,7 +174,7 @@ const BOT_NAMES = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'SIGMA', 'OMEGA', 'PRIME',
 
 function createBot() {
   const botId = `bot_${botIdCounter++}`;
-  const classes = ['shotgun', 'sniper', 'rifle', 'pyro'];
+  const classes = ['shotgun', 'sniper', 'rifle', 'pyro', 'soldier'];
   const botClass = classes[Math.floor(Math.random() * classes.length)];
   const config = CLASS_CONFIGS[botClass];
   const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
@@ -464,6 +478,36 @@ io.on('connection', (socket) => {
     player.ammo--;
   });
 
+  socket.on('selfDamage', (data) => {
+    const player = players[socket.id];
+    if (player) {
+      player.health -= data.damage;
+      
+      if (player.health <= 0) {
+        player.deaths++;
+        io.to(socket.id).emit('youDied', {
+          killerId: socket.id,
+          killerClass: 'soldier'
+        });
+        delete players[socket.id];
+        io.emit('playerKilled', { killerId: socket.id, victimId: socket.id });
+      }
+    }
+  });
+
+  socket.on('selfKill', () => {
+    const player = players[socket.id];
+    if (player) {
+      player.deaths++;
+      io.to(socket.id).emit('youDied', {
+        killerId: socket.id,
+        killerClass: 'soldier'
+      });
+      delete players[socket.id];
+      io.emit('playerKilled', { killerId: socket.id, victimId: socket.id });
+    }
+  });
+
   socket.on('shoot', (data) => {
     const player = players[socket.id];
     if (!player || player.ammo <= 0 || player.isReloading) return;
@@ -581,6 +625,20 @@ setInterval(() => {
           const distMultiplier = Math.min(travelDist / 500, 1);
           const config = CLASS_CONFIGS.sniper;
           damage = config.baseDamage + (config.maxDamage - config.baseDamage) * distMultiplier;
+        }
+        
+        if (b.class === 'soldier') {
+          Object.keys(players).forEach(splashPid => {
+            const splashPlayer = players[splashPid];
+            if (!splashPlayer) return;
+            const sdx = splashPlayer.x - b.x;
+            const sdy = splashPlayer.y - b.y;
+            const splashDist = Math.sqrt(sdx * sdx + sdy * sdy);
+            if (splashDist < CLASS_CONFIGS.soldier.splashRadius) {
+              const splashDmg = CLASS_CONFIGS.soldier.splashDamage * (1 - splashDist / CLASS_CONFIGS.soldier.splashRadius);
+              splashPlayer.health -= splashDmg;
+            }
+          });
         }
         
         p.health -= damage;

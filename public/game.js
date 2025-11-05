@@ -81,12 +81,15 @@ let mouse = { x: 0, y: 0, down: false };
 let camera = { x: 0, y: 0 };
 let myClass = null;
 let classConfig = null;
+let explosions = [];
+let velocity = { x: 0, y: 0 };
 
 const CLASS_CONFIGS = {
     shotgun: { fireRate: 500, icon: '🔫', reloadTime: 2000 },
     sniper: { fireRate: 700, icon: '🎯', reloadTime: 2500 },
     rifle: { fireRate: 80, icon: '💥', reloadTime: 1500 },
-    pyro: { fireRate: 80, icon: '🔥', reloadTime: 3000, isFlame: true }
+    pyro: { fireRate: 80, icon: '🔥', reloadTime: 3000, isFlame: true },
+    soldier: { fireRate: 800, icon: '🚀', reloadTime: 2000, isRocket: true }
 };
 
 let isReloading = false;
@@ -152,6 +155,15 @@ socket.on('bulletFired', (bullet) => {
 });
 
 socket.on('bulletHit', (bulletId) => {
+    const bullet = bullets[bulletId];
+    if (bullet && bullet.class === 'soldier') {
+        explosions.push({
+            x: bullet.x,
+            y: bullet.y,
+            startTime: Date.now(),
+            maxSize: 120
+        });
+    }
     delete bullets[bulletId];
 });
 
@@ -390,14 +402,18 @@ function handleMovement() {
 
     const angle = player.angle;
 
-    if (dx !== 0 || dy !== 0) {
-        const speed = player.speed;
-        if (!speed) {
-            console.log('No speed!', player);
-            return;
-        }
-        const newX = player.x + dx * speed;
-        const newY = player.y + dy * speed;
+    velocity.x *= 0.92;
+    velocity.y *= 0.92;
+    
+    if (Math.abs(velocity.x) < 0.1) velocity.x = 0;
+    if (Math.abs(velocity.y) < 0.1) velocity.y = 0;
+    
+    const totalDx = dx * (player.speed || 3) + velocity.x;
+    const totalDy = dy * (player.speed || 3) + velocity.y;
+    
+    if (totalDx !== 0 || totalDy !== 0) {
+        const newX = player.x + totalDx;
+        const newY = player.y + totalDy;
         
         if (!collidesWithWall(newX, newY)) {
             player.x = newX;
@@ -405,6 +421,8 @@ function handleMovement() {
         } else {
             if (!collidesWithWall(newX, player.y)) player.x = newX;
             if (!collidesWithWall(player.x, newY)) player.y = newY;
+            velocity.x *= 0.5;
+            velocity.y *= 0.5;
         }
         
         player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
@@ -433,6 +451,51 @@ function handleMovement() {
         b.y += b.vy;
         
         if (b.x < 0 || b.x > mapWidth || b.y < 0 || b.y > mapHeight || collidesWithWall(b.x, b.y, 10)) {
+            if (b.class === 'soldier') {
+                explosions.push({
+                    x: b.x,
+                    y: b.y,
+                    startTime: Date.now(),
+                    maxSize: 120
+                });
+                
+                Object.keys(players).forEach(splashPid => {
+                    const sp = players[splashPid];
+                    if (!sp) return;
+                    
+                    const sdx = sp.x - b.x;
+                    const sdy = sp.y - b.y;
+                    const splashDist = Math.sqrt(sdx * sdx + sdy * sdy);
+                    
+                    if (splashDist < 120) {
+                        const splashDmg = 25 * (1 - splashDist / 120);
+                        
+                        if (splashPid === myPlayerId && myPlayerId === b.ownerId) {
+                            const player = players[myPlayerId];
+                            const damage = Math.floor(splashDmg * 0.6);
+                            
+                            socket.emit('selfDamage', { damage: damage });
+                            
+                            if (player.health - damage <= 0) {
+                                console.log('Suicide by rocket!');
+                                socket.emit('selfKill');
+                            }
+                            
+                            const knockbackForce = 50 * (1 - splashDist / 120);
+                            const angle = Math.atan2(sdy, sdx);
+                            velocity.x += Math.cos(angle) * knockbackForce;
+                            velocity.y += Math.sin(angle) * knockbackForce;
+                        } else if (splashPid !== b.ownerId) {
+                            socket.emit('clientHit', {
+                                victimId: splashPid,
+                                bulletAngle: 0,
+                                timestamp: Date.now(),
+                                weaponClass: 'soldier'
+                            });
+                        }
+                    }
+                });
+            }
             delete bullets[bid];
             return;
         }
@@ -445,9 +508,54 @@ function handleMovement() {
             
             const dx = p.x - b.x;
             const dy = p.y - b.y;
-            const hitRadius = 400;
+            const hitRadius = b.class === 'soldier' ? 900 : 400;
             
             if (dx * dx + dy * dy < hitRadius) {
+                if (b.class === 'soldier') {
+                    explosions.push({
+                        x: b.x,
+                        y: b.y,
+                        startTime: Date.now(),
+                        maxSize: 120
+                    });
+                    
+                    Object.keys(players).forEach(splashPid => {
+                        const sp = players[splashPid];
+                        if (!sp) return;
+                        
+                        const sdx = sp.x - b.x;
+                        const sdy = sp.y - b.y;
+                        const splashDist = Math.sqrt(sdx * sdx + sdy * sdy);
+                        
+                        if (splashDist < 120) {
+                            const splashDmg = 25 * (1 - splashDist / 120);
+                            
+                            if (splashPid === myPlayerId && myPlayerId === b.ownerId) {
+                                const player = players[myPlayerId];
+                                const damage = Math.floor(splashDmg * 0.6);
+                                
+                                socket.emit('selfDamage', { damage: damage });
+                                
+                                if (player.health - damage <= 0) {
+                                    console.log('Suicide by rocket (player hit)!');
+                                    socket.emit('selfKill');
+                                }
+                                
+                                const knockbackForce = 50 * (1 - splashDist / 120);
+                                const angle = Math.atan2(sdy, sdx);
+                                velocity.x += Math.cos(angle) * knockbackForce;
+                                velocity.y += Math.sin(angle) * knockbackForce;
+                            } else if (splashPid !== b.ownerId) {
+                                socket.emit('clientHit', {
+                                    victimId: splashPid,
+                                    bulletAngle: 0,
+                                    timestamp: Date.now(),
+                                    weaponClass: 'soldier'
+                                });
+                            }
+                        }
+                    });
+                }
                 delete bullets[bid];
                 hit = true;
             }
@@ -568,7 +676,8 @@ function shoot() {
         shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, damage: 35 },
         sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, damage: 20 },
         rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, damage: 15 },
-        pyro: { bulletSpeed: 6, bulletCount: 1, spread: 0.3, damage: 12, flameRange: 150 }
+        pyro: { bulletSpeed: 6, bulletCount: 1, spread: 0.3, damage: 12, flameRange: 150 },
+        soldier: { bulletSpeed: 10, bulletCount: 1, spread: 0, damage: 40, splashRadius: 120, splashDamage: 25 }
     };
     
     const bulletConfig = serverConfig[myClass];
@@ -595,23 +704,31 @@ function shoot() {
         
         bullets[localBullet.id] = localBullet;
         
-        const hitPlayer = checkInstantHit(localBullet);
-        if (hitPlayer) {
-            socket.emit('clientHit', { 
-                victimId: hitPlayer.id, 
-                bulletAngle: bulletAngle,
-                timestamp: Date.now() - (currentPing / 2),
-                weaponClass: myClass
-            });
+        if (myClass === 'soldier') {
+            localBullet.ownerId = myPlayerId;
+        }
+        
+        if (myClass !== 'soldier') {
+            const hitPlayer = checkInstantHit(localBullet);
+            if (hitPlayer) {
+                socket.emit('clientHit', { 
+                    victimId: hitPlayer.id, 
+                    bulletAngle: bulletAngle,
+                    timestamp: Date.now() - (currentPing / 2),
+                    weaponClass: myClass
+                });
+            }
         }
     }
 
     player.ammo--;
 
-    if (myClass !== 'pyro') {
+    if (myClass === 'pyro') {
+        socket.emit('pyroShot');
+    } else if (myClass === 'soldier') {
         socket.emit('shoot', { angle: angle });
     } else {
-        socket.emit('pyroShot');
+        socket.emit('shoot', { angle: angle });
     }
 }
 
@@ -743,8 +860,64 @@ function draw() {
         }
     });
 
+    explosions = explosions.filter(exp => {
+        const age = Date.now() - exp.startTime;
+        if (age > 400) return false;
+        
+        const size = (age / 400) * exp.maxSize;
+        const opacity = 1 - (age / 400);
+        
+        ctx.globalAlpha = opacity;
+        
+        ctx.fillStyle = `rgba(255, ${150 - age/2}, 0, ${opacity})`;
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = 'orange';
+        ctx.beginPath();
+        ctx.arc(exp.x, exp.y, size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = `rgba(255, 255, 0, ${opacity * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(exp.x, exp.y, size * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        
+        return true;
+    });
+
     Object.values(bullets).forEach(bullet => {
-        if (bullet.class === 'pyro') {
+        if (bullet.class === 'soldier') {
+            ctx.save();
+            ctx.translate(bullet.x, bullet.y);
+            const angle = Math.atan2(bullet.vy, bullet.vx);
+            ctx.rotate(angle);
+            
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = 'rgba(255, 100, 0, 0.8)';
+            
+            ctx.fillStyle = '#222';
+            ctx.fillRect(-12, -6, 24, 12);
+            
+            ctx.fillStyle = '#ff4400';
+            ctx.beginPath();
+            ctx.moveTo(12, 0);
+            ctx.lineTo(18, -6);
+            ctx.lineTo(18, 6);
+            ctx.closePath();
+            ctx.fill();
+            
+            for (let i = 0; i < 3; i++) {
+                ctx.fillStyle = `rgba(255, ${200 - i*50}, 0, ${0.6 - i*0.2})`;
+                ctx.beginPath();
+                ctx.arc(-12 - i*8, 0, 5 - i, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+            ctx.shadowBlur = 0;
+        } else if (bullet.class === 'pyro') {
             const startTime = bullet.clientTime || 0;
             const age = Date.now() - startTime;
             const maxAge = 250;
