@@ -47,6 +47,8 @@ const bullets = {};
 const powerUps = {};
 let bulletIdCounter = 0;
 let powerUpIdCounter = 0;
+let botIdCounter = 0;
+const MAX_BOTS = 5;
 
 const SPAWN_POINTS = [
   { x: 100, y: 100 },
@@ -90,6 +92,130 @@ function spawnPowerUp() {
 
 setInterval(spawnPowerUp, 10000);
 for (let i = 0; i < 3; i++) spawnPowerUp();
+
+const BOT_NAMES = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'SIGMA', 'OMEGA', 'PRIME', 'NEXUS'];
+
+function createBot() {
+  const botId = `bot_${botIdCounter++}`;
+  const classes = ['shotgun', 'sniper', 'rifle'];
+  const botClass = classes[Math.floor(Math.random() * classes.length)];
+  const config = CLASS_CONFIGS[botClass];
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+  const pos = getSpawnPosition();
+  
+  players[botId] = {
+    id: botId,
+    x: pos.x,
+    y: pos.y,
+    angle: Math.random() * Math.PI * 2,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    health: 100,
+    score: 0,
+    kills: 0,
+    speed: PLAYER_SPEED,
+    ammo: config.maxAmmo,
+    class: botClass,
+    classConfig: config,
+    isBot: true,
+    name: BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)],
+    targetX: pos.x,
+    targetY: pos.y,
+    lastShot: 0
+  };
+
+  io.emit('playerJoined', players[botId]);
+  console.log(`🤖 Bot ${players[botId].name} (${botClass})`);
+}
+
+function updateBot(botId) {
+  const bot = players[botId];
+  if (!bot || !bot.isBot) return;
+
+  if (Math.random() < 0.02) {
+    bot.targetX = Math.random() * MAP_WIDTH;
+    bot.targetY = Math.random() * MAP_HEIGHT;
+  }
+
+  const dx = bot.targetX - bot.x;
+  const dy = bot.targetY - bot.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist > 10) {
+    const moveX = (dx / dist) * bot.speed;
+    const moveY = (dy / dist) * bot.speed;
+    
+    bot.x += moveX;
+    bot.y += moveY;
+  }
+
+  const nearestPlayer = Object.values(players)
+    .filter(p => !p.isBot && p.id !== botId)
+    .sort((a, b) => {
+      const distA = Math.hypot(a.x - bot.x, a.y - bot.y);
+      const distB = Math.hypot(b.x - bot.x, b.y - bot.y);
+      return distA - distB;
+    })[0];
+
+  if (nearestPlayer) {
+    bot.angle = Math.atan2(nearestPlayer.y - bot.y, nearestPlayer.x - bot.x);
+    
+    const distToPlayer = Math.hypot(nearestPlayer.x - bot.x, nearestPlayer.y - bot.y);
+    const now = Date.now();
+    
+    if (distToPlayer < 400 && bot.ammo > 0 && now - bot.lastShot > bot.classConfig.fireRate) {
+      bot.lastShot = now;
+      bot.ammo--;
+      
+      for (let i = 0; i < bot.classConfig.bulletCount; i++) {
+        let angle = bot.angle;
+        if (bot.classConfig.bulletCount > 1) {
+          angle += (i - (bot.classConfig.bulletCount - 1) / 2) * bot.classConfig.spread;
+        }
+
+        const bulletId = `bullet_${bulletIdCounter++}`;
+        bullets[bulletId] = {
+          id: bulletId,
+          x: bot.x,
+          y: bot.y,
+          vx: Math.cos(angle) * bot.classConfig.bulletSpeed,
+          vy: Math.sin(angle) * bot.classConfig.bulletSpeed,
+          velocityX: Math.cos(angle) * bot.classConfig.bulletSpeed,
+          velocityY: Math.sin(angle) * bot.classConfig.bulletSpeed,
+          ownerId: botId,
+          color: bot.color,
+          damage: bot.classConfig.damage,
+          class: bot.class
+        };
+        io.emit('bulletFired', bullets[bulletId]);
+      }
+    }
+  }
+
+  Object.values(powerUps).forEach(powerUp => {
+    const dx = bot.x - powerUp.x;
+    const dy = bot.y - powerUp.y;
+    if (dx * dx + dy * dy < 900) {
+      switch(powerUp.type) {
+        case 'health': bot.health = Math.min(100, bot.health + 30); break;
+        case 'speed': 
+          bot.speed = PLAYER_SPEED + 2;
+          setTimeout(() => { if (players[botId]) players[botId].speed = PLAYER_SPEED; }, 5000);
+          break;
+        case 'ammo': bot.ammo += 10; break;
+      }
+      delete powerUps[powerUp.id];
+      io.emit('powerUpCollected', powerUp.id);
+    }
+  });
+}
+
+function spawnBots() {
+  for (let i = 0; i < MAX_BOTS; i++) {
+    createBot();
+  }
+}
+
+setTimeout(spawnBots, 3000);
 
 function collidesWithWall(x, y, size = 10) {
   const halfSize = size / 2;
@@ -214,6 +340,12 @@ const PLAYER_KEYS = () => Object.keys(players);
 const BULLET_KEYS = () => Object.keys(bullets);
 
 setInterval(() => {
+  Object.keys(players).forEach(pid => {
+    if (players[pid].isBot) {
+      updateBot(pid);
+    }
+  });
+
   const bulletKeys = BULLET_KEYS();
   const playerKeys = PLAYER_KEYS();
   
@@ -248,11 +380,19 @@ setInterval(() => {
             players[b.ownerId].kills++;
             players[b.ownerId].score += 100;
           }
-          io.to(pid).emit('youDied', {
-            killerId: b.ownerId,
-            killerClass: players[b.ownerId]?.class
-          });
-          delete players[pid];
+          if (players[pid].isBot) {
+            delete players[pid];
+            setTimeout(() => {
+              const botCount = Object.values(players).filter(p => p.isBot).length;
+              if (botCount < MAX_BOTS) createBot();
+            }, 5000);
+          } else {
+            io.to(pid).emit('youDied', {
+              killerId: b.ownerId,
+              killerClass: players[b.ownerId]?.class
+            });
+            delete players[pid];
+          }
           io.emit('playerKilled', { killerId: b.ownerId, victimId: pid });
         }
         
