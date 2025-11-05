@@ -222,9 +222,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-let lastMoveUpdate = 0;
-const MOVE_UPDATE_INTERVAL = 100; // Send updates every 100ms (10 times per second)
-const INTERPOLATION_SPEED = 0.4; // Increased for smoother interpolation
+const INTERPOLATION_SPEED = 0.3;
 
 function handleMovement() {
     const player = players[myPlayerId];
@@ -238,58 +236,55 @@ function handleMovement() {
     if (keys['a'] || keys['arrowleft']) dx -= 1;
     if (keys['d'] || keys['arrowright']) dx += 1;
 
-    // Normalize diagonal movement
+    // Normalize diagonal
     if (dx !== 0 && dy !== 0) {
         dx *= 0.707;
         dy *= 0.707;
     }
 
-    // Always calculate angle to mouse (even when not moving)
+    // Update angle
     const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     player.angle = angle;
 
-    // Update YOUR position locally (smooth 60 FPS)
+    // Move locally
     if (dx !== 0 || dy !== 0) {
         const speed = player.speed || 3;
         const newX = player.x + dx * speed;
         const newY = player.y + dy * speed;
         
-        // Check wall collision
+        // Wall collision
         if (!collidesWithWall(newX, newY)) {
             player.x = newX;
             player.y = newY;
         } else {
-            // Slide along walls
-            if (!collidesWithWall(newX, player.y)) {
-                player.x = newX;
-            }
-            if (!collidesWithWall(player.x, newY)) {
-                player.y = newY;
-            }
+            if (!collidesWithWall(newX, player.y)) player.x = newX;
+            if (!collidesWithWall(player.x, newY)) player.y = newY;
         }
         
-        // Clamp to map
+        // Clamp
         player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
-    }
-
-    // Send input to server (throttled)
-    const now = Date.now();
-    if (now - lastMoveUpdate > MOVE_UPDATE_INTERVAL) {
-        socket.emit('playerInput', {
-            dx: dx,
-            dy: dy,
+        
+        // Send to server
+        socket.emit('updatePosition', {
+            x: player.x,
+            y: player.y,
             angle: angle
         });
-        lastMoveUpdate = now;
+    } else if (player.angle !== angle) {
+        // Just angle changed
+        socket.emit('updatePosition', {
+            x: player.x,
+            y: player.y,
+            angle: angle
+        });
     }
 
-    // Smooth interpolate other players every frame
+    // Interpolate others
     Object.keys(players).forEach(id => {
         if (id === myPlayerId) return;
         const p = players[id];
-        if (p.targetX !== undefined && p.targetY !== undefined) {
-            // Lerp towards target
+        if (p.targetX !== undefined) {
             p.x += (p.targetX - p.x) * INTERPOLATION_SPEED;
             p.y += (p.targetY - p.y) * INTERPOLATION_SPEED;
         }
