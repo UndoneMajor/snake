@@ -86,7 +86,7 @@ const CLASS_CONFIGS = {
     shotgun: { fireRate: 500, icon: '🔫', reloadTime: 2000 },
     sniper: { fireRate: 700, icon: '🎯', reloadTime: 2500 },
     rifle: { fireRate: 80, icon: '💥', reloadTime: 1500 },
-    pyro: { fireRate: 100, icon: '🔥', reloadTime: 3000, isFlame: true }
+    pyro: { fireRate: 80, icon: '🔥', reloadTime: 3000, isFlame: true }
 };
 
 let isReloading = false;
@@ -422,7 +422,7 @@ function handleMovement() {
         
         if (b.class === 'pyro') {
             const age = Date.now() - (b.clientTime || 0);
-            if (age > 400) {
+            if (age > 250) {
                 delete bullets[bid];
                 return;
             }
@@ -561,7 +561,7 @@ function shoot() {
         shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3, damage: 35 },
         sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0, damage: 20 },
         rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05, damage: 15 },
-        pyro: { bulletSpeed: 5, bulletCount: 3, spread: 0.4, damage: 8, flameRange: 150 }
+        pyro: { bulletSpeed: 6, bulletCount: 1, spread: 0.3, damage: 12, flameRange: 150 }
     };
     
     const bulletConfig = serverConfig[myClass];
@@ -667,16 +667,6 @@ function draw() {
             ctx.arc(player.x, player.y, 50, 0, Math.PI * 2);
             ctx.fill();
             ctx.globalAlpha = 1;
-            
-            ctx.strokeStyle = player.color;
-            ctx.globalAlpha = 0.4;
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.globalAlpha = 1;
         }
 
         ctx.fillStyle = player.color;
@@ -747,9 +737,9 @@ function draw() {
         if (bullet.class === 'pyro') {
             const startTime = bullet.clientTime || 0;
             const age = Date.now() - startTime;
-            const maxAge = 400;
+            const maxAge = 250;
             const opacity = Math.max(0, 1 - age / maxAge);
-            const size = 12 + age / 30;
+            const size = 15 + age / 25;
             
             if (age > maxAge) {
                 delete bullets[bullet.id];

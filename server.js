@@ -56,11 +56,11 @@ const CLASS_CONFIGS = {
     speed: PLAYER_SPEED * 0.85
   },
   pyro: {
-    bulletSpeed: 5,
-    bulletCount: 3,
-    spread: 0.4,
-    fireRate: 100,
-    damage: 8,
+    bulletSpeed: 6,
+    bulletCount: 1,
+    spread: 0.3,
+    fireRate: 80,
+    damage: 12,
     maxAmmo: 100,
     maxReserve: 100,
     reloadTime: 3000,
