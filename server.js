@@ -144,8 +144,19 @@ function updateBot(botId) {
     const moveX = (dx / dist) * bot.speed;
     const moveY = (dy / dist) * bot.speed;
     
-    bot.x += moveX;
-    bot.y += moveY;
+    const newX = bot.x + moveX;
+    const newY = bot.y + moveY;
+    
+    if (!collidesWithWall(newX, newY, 30)) {
+      bot.x = newX;
+      bot.y = newY;
+    } else {
+      if (!collidesWithWall(newX, bot.y, 30)) bot.x = newX;
+      if (!collidesWithWall(bot.x, newY, 30)) bot.y = newY;
+      
+      bot.targetX = Math.random() * MAP_WIDTH;
+      bot.targetY = Math.random() * MAP_HEIGHT;
+    }
   }
 
   const nearestPlayer = Object.values(players)
