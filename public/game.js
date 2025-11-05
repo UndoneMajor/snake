@@ -34,6 +34,25 @@ const CLASS_CONFIGS = {
     rifle: { fireRate: 100, icon: '💥' }
 };
 
+// Client-side collision detection
+function collidesWithWall(x, y, size = 30) {
+    const halfSize = size / 2;
+    const left = x - halfSize;
+    const right = x + halfSize;
+    const top = y - halfSize;
+    const bottom = y + halfSize;
+    
+    for (let wall of walls) {
+        if (right > wall.x && 
+            left < wall.x + wall.width && 
+            bottom > wall.y && 
+            top < wall.y + wall.height) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Show class selection on load
 window.addEventListener('load', () => {
     classModal.classList.remove('hidden');
@@ -219,10 +238,28 @@ function handleMovement() {
     const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     player.angle = angle;
 
-    // Update position locally (client-side prediction)
+    // Update position locally (client-side prediction with collision)
     if (dx !== 0 || dy !== 0) {
-        player.x += dx * player.speed;
-        player.y += dy * player.speed;
+        const newX = player.x + dx * player.speed;
+        const newY = player.y + dy * player.speed;
+        
+        // Check wall collision before moving
+        if (!collidesWithWall(newX, newY)) {
+            player.x = newX;
+            player.y = newY;
+        } else {
+            // Try sliding along walls
+            if (!collidesWithWall(newX, player.y)) {
+                player.x = newX;
+            }
+            if (!collidesWithWall(player.x, newY)) {
+                player.y = newY;
+            }
+        }
+        
+        // Clamp to map bounds
+        player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
+        player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
     }
 
     // Only send update to server periodically
