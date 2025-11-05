@@ -97,12 +97,13 @@ socket.on('playerLeft', (playerId) => {
     delete players[playerId];
 });
 
-// Bullets from server - merge with local bullets
+// Bullets from server - ignore if it's our own (we already created it locally)
 socket.on('bulletFired', (bullet) => {
-    // Don't override if we already have this bullet locally
-    if (!bullets[bullet.id]) {
-        bullets[bullet.id] = bullet;
-    }
+    // Skip if this is our bullet (we predicted it)
+    if (bullet.ownerId === myPlayerId) return;
+    
+    // Add other players' bullets
+    bullets[bullet.id] = bullet;
 });
 
 // FAST update handler - 60 FPS
@@ -132,13 +133,8 @@ socket.on('update', (data) => {
         }
     });
     
-    // Merge server bullets with local bullets (server is authoritative for hits)
-    // Keep local bullets for instant feedback, server bullets for accuracy
-    Object.keys(data.bullets || {}).forEach(bid => {
-        if (!bid.startsWith('local_')) {
-            bullets[bid] = data.bullets[bid];
-        }
-    });
+    // Don't replace bullets - client handles them locally for smoothness
+    // Server only needed for hit detection (already handled in 'youDied' event)
 });
 
 // Update UI less frequently
@@ -336,8 +332,8 @@ function handleMovement() {
             b.x += b.vx;
             b.y += b.vy;
             
-            // Remove if out of bounds
-            if (b.x < 0 || b.x > mapWidth || b.y < 0 || b.y > mapHeight) {
+            // Remove if out of bounds or hits wall
+            if (b.x < 0 || b.x > mapWidth || b.y < 0 || b.y > mapHeight || collidesWithWall(b.x, b.y, 10)) {
                 delete bullets[bid];
             }
         }
