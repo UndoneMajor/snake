@@ -94,22 +94,53 @@ socket.on('bulletFired', (bullet) => {
     bullets[bullet.id] = bullet;
 });
 
-// Game state updates - server is ALWAYS authoritative
+// Game state updates - hybrid approach
 socket.on('gameState', (data) => {
-    // Completely replace with server state
-    players = {};
-    
     Object.keys(data.players).forEach(id => {
         const serverPlayer = data.players[id];
         
         if (id === myPlayerId) {
-            // Even for you, server is truth
-            players[id] = { ...serverPlayer };
+            // Update ONLY stats from server, keep local position
+            if (players[id]) {
+                players[id].health = serverPlayer.health;
+                players[id].ammo = serverPlayer.ammo;
+                players[id].kills = serverPlayer.kills;
+                players[id].score = serverPlayer.score;
+                players[id].speed = serverPlayer.speed;
+                players[id].class = serverPlayer.class;
+                
+                // Soft correction if too far off
+                const dx = serverPlayer.x - players[id].x;
+                const dy = serverPlayer.y - players[id].y;
+                const distSquared = dx * dx + dy * dy;
+                
+                if (distSquared > 10000) { // If more than 100 pixels off, snap
+                    players[id].x = serverPlayer.x;
+                    players[id].y = serverPlayer.y;
+                } else if (distSquared > 100) { // If 10-100 pixels off, lerp
+                    players[id].x += (serverPlayer.x - players[id].x) * 0.1;
+                    players[id].y += (serverPlayer.y - players[id].y) * 0.1;
+                }
+            } else {
+                players[id] = { ...serverPlayer };
+            }
         } else {
-            // Other players - smooth interpolation
-            players[id] = { ...serverPlayer };
-            players[id].targetX = serverPlayer.x;
-            players[id].targetY = serverPlayer.y;
+            // Other players - interpolation
+            if (players[id]) {
+                players[id].targetX = serverPlayer.x;
+                players[id].targetY = serverPlayer.y;
+                players[id].angle = serverPlayer.angle;
+                players[id].health = serverPlayer.health;
+                players[id].ammo = serverPlayer.ammo;
+                players[id].kills = serverPlayer.kills;
+                players[id].score = serverPlayer.score;
+                players[id].class = serverPlayer.class;
+                players[id].color = serverPlayer.color;
+            } else {
+                players[id] = { ...serverPlayer };
+                players[id].targetX = serverPlayer.x;
+                players[id].targetY = serverPlayer.y;
+            }
         }
     });
     
@@ -228,12 +259,41 @@ function handleMovement() {
     const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     player.angle = angle;
 
-    // Send movement input to server every frame when moving
-    socket.emit('playerInput', {
-        dx: dx,
-        dy: dy,
-        angle: angle
-    });
+    // Update YOUR position locally (smooth 60 FPS)
+    if (dx !== 0 || dy !== 0) {
+        const speed = player.speed || 3;
+        const newX = player.x + dx * speed;
+        const newY = player.y + dy * speed;
+        
+        // Check wall collision
+        if (!collidesWithWall(newX, newY)) {
+            player.x = newX;
+            player.y = newY;
+        } else {
+            // Slide along walls
+            if (!collidesWithWall(newX, player.y)) {
+                player.x = newX;
+            }
+            if (!collidesWithWall(player.x, newY)) {
+                player.y = newY;
+            }
+        }
+        
+        // Clamp to map
+        player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
+        player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
+    }
+
+    // Send input to server (throttled)
+    const now = Date.now();
+    if (now - lastMoveUpdate > MOVE_UPDATE_INTERVAL) {
+        socket.emit('playerInput', {
+            dx: dx,
+            dy: dy,
+            angle: angle
+        });
+        lastMoveUpdate = now;
+    }
 
     // Smooth interpolate other players every frame
     Object.keys(players).forEach(id => {
