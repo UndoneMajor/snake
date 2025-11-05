@@ -171,7 +171,7 @@ function createBot() {
   };
 
   io.emit('playerJoined', players[botId]);
-  console.log(`🤖 Bot ${players[botId].name} (${botClass})`);
+  console.log(`🤖 Bot ${players[botId].name} (${botClass}) Speed: ${config.speed}`);
 }
 
 function updateBot(botId) {
@@ -283,11 +283,11 @@ function updateBot(botId) {
       switch(powerUp.type) {
         case 'health': bot.health = Math.min(100, bot.health + 30); break;
         case 'speed': 
-          const baseSpeed = bot.classConfig.speed || PLAYER_SPEED;
+          const baseSpeed = bot.classConfig?.speed || PLAYER_SPEED;
           bot.speed = baseSpeed * 1.3;
           setTimeout(() => { 
-            if (players[botId]) {
-              players[botId].speed = baseSpeed;
+            if (players[botId] && players[botId].classConfig) {
+              players[botId].speed = players[botId].classConfig.speed;
             }
           }, 5000);
           break;
@@ -523,13 +523,11 @@ let frameCount = 0;
 setInterval(() => {
   frameCount++;
   
-  if (frameCount % 2 === 0) {
-    Object.keys(players).forEach(pid => {
-      if (players[pid]?.isBot) {
-        updateBot(pid);
-      }
-    });
-  }
+  Object.keys(players).forEach(pid => {
+    if (players[pid]?.isBot) {
+      updateBot(pid);
+    }
+  });
 
   const bulletKeys = Object.keys(bullets);
   const playerKeys = Object.keys(players);
