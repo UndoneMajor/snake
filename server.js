@@ -249,6 +249,15 @@ io.on('connection', (socket) => {
     
     if (!player || !powerUp) return;
 
+    // Check distance server-side to prevent cheating
+    const dx = player.x - powerUp.x;
+    const dy = player.y - powerUp.y;
+    const distSquared = dx * dx + dy * dy;
+    
+    if (distSquared > 1600) return; // Must be within 40 pixels
+
+    console.log(`💊 ${socket.id} collected ${powerUp.type}`);
+
     switch(powerUp.type) {
       case 'health':
         player.health = Math.min(player.maxHealth, player.health + 30);
@@ -276,19 +285,22 @@ io.on('connection', (socket) => {
   });
 });
 
-// Separate faster loop for bullets only
+// Single game loop - simpler and less buggy
 setInterval(() => {
   const bulletIds = Object.keys(bullets);
+  const playerIds = Object.keys(players);
   
   // Update bullets
   for (let i = bulletIds.length - 1; i >= 0; i--) {
     const bulletId = bulletIds[i];
     const bullet = bullets[bulletId];
     
+    if (!bullet) continue;
+    
     bullet.x += bullet.velocityX;
     bullet.y += bullet.velocityY;
 
-    // Quick bounds check first (faster than wall check)
+    // Quick bounds check first
     if (bullet.x < 0 || bullet.x > MAP_WIDTH || bullet.y < 0 || bullet.y > MAP_HEIGHT) {
       delete bullets[bulletId];
       continue;
@@ -307,6 +319,8 @@ setInterval(() => {
       if (playerId === bullet.ownerId) continue;
       
       const player = players[playerId];
+      if (!player) continue;
+      
       const dx = player.x - bullet.x;
       const dy = player.y - bullet.y;
       const distSquared = dx * dx + dy * dy;
@@ -346,18 +360,13 @@ setInterval(() => {
     
     if (hit) continue;
   }
-}, 1000 / 30); // Bullet updates at 30 FPS
 
-// Slower loop for player state broadcasting
-setInterval(() => {
-  // Only broadcast if there are players
-  if (Object.keys(players).length > 0) {
-    io.volatile.emit('gameState', {
-      players: players,
-      bullets: bullets
-    });
-  }
-}, 1000 / 15); // Player state at 15 FPS for better performance
+  // Broadcast game state
+  io.emit('gameState', {
+    players: players,
+    bullets: bullets
+  });
+}, 1000 / 20); // Single 20 FPS game loop
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Multiplayer Shooter Server Running!`);

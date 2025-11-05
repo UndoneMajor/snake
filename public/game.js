@@ -94,53 +94,26 @@ socket.on('bulletFired', (bullet) => {
     bullets[bullet.id] = bullet;
 });
 
-// Game state updates - server is authoritative
+// Game state updates - server is ALWAYS authoritative
 socket.on('gameState', (data) => {
-    // Update ALL players from server (including yourself)
+    // Completely replace with server state
+    players = {};
+    
     Object.keys(data.players).forEach(id => {
         const serverPlayer = data.players[id];
         
         if (id === myPlayerId) {
-            // Update your stats from server (health, ammo, etc)
-            if (players[id]) {
-                players[id].health = serverPlayer.health;
-                players[id].ammo = serverPlayer.ammo;
-                players[id].kills = serverPlayer.kills;
-                players[id].score = serverPlayer.score;
-                players[id].speed = serverPlayer.speed;
-                
-                // Reconcile position (server wins if too far off)
-                const dx = serverPlayer.x - players[id].x;
-                const dy = serverPlayer.y - players[id].y;
-                const distSquared = dx * dx + dy * dy;
-                
-                if (distSquared > 2500) { // If more than 50 pixels off
-                    players[id].x = serverPlayer.x;
-                    players[id].y = serverPlayer.y;
-                }
-            }
+            // Even for you, server is truth
+            players[id] = { ...serverPlayer };
         } else {
-            // Other players - use interpolation
-            if (players[id]) {
-                players[id].targetX = serverPlayer.x;
-                players[id].targetY = serverPlayer.y;
-                players[id].angle = serverPlayer.angle;
-                players[id].health = serverPlayer.health;
-                players[id].ammo = serverPlayer.ammo;
-                players[id].kills = serverPlayer.kills;
-                players[id].score = serverPlayer.score;
-                players[id].class = serverPlayer.class;
-                players[id].color = serverPlayer.color;
-            } else {
-                // New player
-                players[id] = { ...serverPlayer };
-                players[id].targetX = serverPlayer.x;
-                players[id].targetY = serverPlayer.y;
-            }
+            // Other players - smooth interpolation
+            players[id] = { ...serverPlayer };
+            players[id].targetX = serverPlayer.x;
+            players[id].targetY = serverPlayer.y;
         }
     });
     
-    bullets = data.bullets;
+    bullets = data.bullets || {};
     updateUI();
     updateLeaderboard();
 });
@@ -255,40 +228,12 @@ function handleMovement() {
     const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     player.angle = angle;
 
-    // Send movement input to server
-    const now = Date.now();
-    if (now - lastMoveUpdate > MOVE_UPDATE_INTERVAL || dx !== 0 || dy !== 0) {
-        socket.emit('playerInput', {
-            dx: dx,
-            dy: dy,
-            angle: angle
-        });
-        lastMoveUpdate = now;
-    }
-    
-    // Optimistic local movement (will be corrected by server)
-    if (dx !== 0 || dy !== 0) {
-        const newX = player.x + dx * (player.speed || 5);
-        const newY = player.y + dy * (player.speed || 5);
-        
-        // Check wall collision before moving
-        if (!collidesWithWall(newX, newY)) {
-            player.x = newX;
-            player.y = newY;
-        } else {
-            // Try sliding along walls
-            if (!collidesWithWall(newX, player.y)) {
-                player.x = newX;
-            }
-            if (!collidesWithWall(player.x, newY)) {
-                player.y = newY;
-            }
-        }
-        
-        // Clamp to map bounds
-        player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
-        player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
-    }
+    // Send movement input to server every frame when moving
+    socket.emit('playerInput', {
+        dx: dx,
+        dy: dy,
+        angle: angle
+    });
 
     // Smooth interpolate other players every frame
     Object.keys(players).forEach(id => {
@@ -303,12 +248,14 @@ function handleMovement() {
 
     // Check power-up collection
     Object.values(powerUps).forEach(powerUp => {
+        if (!powerUp) return;
         const dx = player.x - powerUp.x;
         const dy = player.y - powerUp.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distSquared = dx * dx + dy * dy;
         
-        if (distance < 30) {
+        if (distSquared < 900) { // 30 * 30
             socket.emit('collectPowerUp', powerUp.id);
+            delete powerUps[powerUp.id]; // Remove locally immediately
         }
     });
 }
