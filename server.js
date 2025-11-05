@@ -48,11 +48,33 @@ const powerUps = {};
 let bulletIdCounter = 0;
 let powerUpIdCounter = 0;
 
+// Fixed spawn points (safe locations)
+const SPAWN_POINTS = [
+  { x: 200, y: 200 },      // Top-left
+  { x: 2200, y: 200 },     // Top-right
+  { x: 200, y: 1600 },     // Bottom-left
+  { x: 2200, y: 1600 },    // Bottom-right
+  { x: 1200, y: 900 },     // Center
+  { x: 600, y: 600 },      // Mid-left
+  { x: 1800, y: 600 },     // Mid-right
+  { x: 1200, y: 400 }      // Top-center
+];
+
+let lastSpawnIndex = 0;
+
+function getSpawnPosition() {
+  // Cycle through spawn points
+  const spawn = SPAWN_POINTS[lastSpawnIndex];
+  lastSpawnIndex = (lastSpawnIndex + 1) % SPAWN_POINTS.length;
+  return { ...spawn };
+}
+
 function randomPosition() {
-  return {
-    x: Math.random() * (MAP_WIDTH - 100) + 50,
-    y: Math.random() * (MAP_HEIGHT - 100) + 50
-  };
+  // For power-ups, still use random but avoid walls
+  let x, y;
+  x = Math.random() * (MAP_WIDTH - 100) + 50;
+  y = Math.random() * (MAP_HEIGHT - 100) + 50;
+  return { x, y };
 }
 
 function spawnPowerUp() {
@@ -75,7 +97,7 @@ io.on('connection', (socket) => {
     if (!CLASS_CONFIGS[playerClass]) return;
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-    const pos = randomPosition();
+    const pos = getSpawnPosition(); // Use fixed spawn instead of random
     const config = CLASS_CONFIGS[playerClass];
     
     players[socket.id] = {
@@ -236,13 +258,13 @@ setInterval(() => {
             players[bullet.ownerId].score += 100;
           }
 
-          // Notify player they died - don't respawn automatically
+          // Notify player they died
           io.to(playerId).emit('youDied', {
             killerId: bullet.ownerId,
             killerClass: players[bullet.ownerId]?.class
           });
 
-          // Remove player from game
+          // Remove player from game (they'll rejoin via class selection)
           delete players[playerId];
 
           io.emit('playerKilled', {
@@ -256,12 +278,12 @@ setInterval(() => {
     });
   });
 
-  // Broadcast at 30 FPS
+  // Broadcast at 20 FPS (reduced from 30)
   io.emit('gameState', {
     players: players,
     bullets: bullets
   });
-}, 33); // 30 FPS
+}, 50); // 20 FPS - better performance
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Server Running: http://localhost:${PORT}\n`);

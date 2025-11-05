@@ -242,6 +242,8 @@ function gameLoop() {
 }
 
 const INTERPOLATION_SPEED = 0.3;
+let lastMoveUpdate = 0;
+let lastMinimapUpdate = 0;
 
 function handleMovement() {
     const player = players[myPlayerId];
@@ -283,20 +285,17 @@ function handleMovement() {
         // Clamp
         player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
-        
-        // Send to server
+    }
+    
+    // Throttled position send (10 times/sec instead of 60)
+    const now = Date.now();
+    if (now - lastMoveUpdate > 100) {
         socket.emit('updatePosition', {
             x: player.x,
             y: player.y,
             angle: angle
         });
-    } else if (player.angle !== angle) {
-        // Just angle changed
-        socket.emit('updatePosition', {
-            x: player.x,
-            y: player.y,
-            angle: angle
-        });
+        lastMoveUpdate = now;
     }
 
     // Interpolate others
@@ -480,8 +479,12 @@ function draw() {
     // Restore context
     ctx.restore();
 
-    // Draw minimap
-    drawMinimap();
+    // Draw minimap (only 10 times/sec)
+    const now = Date.now();
+    if (now - lastMinimapUpdate > 100) {
+        drawMinimap();
+        lastMinimapUpdate = now;
+    }
 }
 
 function drawMinimap() {
