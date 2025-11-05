@@ -24,12 +24,12 @@ const MAP_HEIGHT = 1800;
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const PLAYER_SIZE = 30;
-const PLAYER_SPEED = 5;
+const PLAYER_SPEED = 3; // Reduced from 5 to 3
 
 // Class configurations
 const CLASS_CONFIGS = {
   shotgun: {
-    bulletSpeed: 6,
+    bulletSpeed: 10, // Increased from 6 to 10
     bulletCount: 3,
     spread: 0.3,
     fireRate: 600,
@@ -37,7 +37,7 @@ const CLASS_CONFIGS = {
     maxAmmo: 20
   },
   sniper: {
-    bulletSpeed: 15,
+    bulletSpeed: 20, // Increased from 15 to 20
     bulletCount: 1,
     spread: 0,
     fireRate: 800,
@@ -45,7 +45,7 @@ const CLASS_CONFIGS = {
     maxAmmo: 15
   },
   rifle: {
-    bulletSpeed: 10,
+    bulletSpeed: 12, // Increased from 10 to 12
     bulletCount: 1,
     spread: 0.05,
     fireRate: 100,
@@ -276,10 +276,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// Game loop - optimized
+// Separate faster loop for bullets only
 setInterval(() => {
   const bulletIds = Object.keys(bullets);
-  const playerIds = Object.keys(players);
   
   // Update bullets
   for (let i = bulletIds.length - 1; i >= 0; i--) {
@@ -347,13 +346,18 @@ setInterval(() => {
     
     if (hit) continue;
   }
+}, 1000 / 30); // Bullet updates at 30 FPS
 
-  // Broadcast game state
-  io.emit('gameState', {
-    players: players,
-    bullets: bullets
-  });
-}, 1000 / 20); // 20 FPS server tick rate for better performance
+// Slower loop for player state broadcasting
+setInterval(() => {
+  // Only broadcast if there are players
+  if (Object.keys(players).length > 0) {
+    io.volatile.emit('gameState', {
+      players: players,
+      bullets: bullets
+    });
+  }
+}, 1000 / 15); // Player state at 15 FPS for better performance
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Multiplayer Shooter Server Running!`);

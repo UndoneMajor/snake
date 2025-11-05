@@ -231,7 +231,7 @@ function gameLoop() {
 
 let lastMoveUpdate = 0;
 const MOVE_UPDATE_INTERVAL = 100; // Send updates every 100ms (10 times per second)
-const INTERPOLATION_SPEED = 0.25; // Smooth interpolation factor
+const INTERPOLATION_SPEED = 0.4; // Increased for smoother interpolation
 
 function handleMovement() {
     const player = players[myPlayerId];
@@ -290,11 +290,12 @@ function handleMovement() {
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
     }
 
-    // Interpolate other players towards their target positions
+    // Smooth interpolate other players every frame
     Object.keys(players).forEach(id => {
         if (id === myPlayerId) return;
         const p = players[id];
-        if (p.targetX !== undefined) {
+        if (p.targetX !== undefined && p.targetY !== undefined) {
+            // Lerp towards target
             p.x += (p.targetX - p.x) * INTERPOLATION_SPEED;
             p.y += (p.targetY - p.y) * INTERPOLATION_SPEED;
         }
