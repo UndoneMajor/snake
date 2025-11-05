@@ -94,32 +94,49 @@ socket.on('bulletFired', (bullet) => {
     bullets[bullet.id] = bullet;
 });
 
-// Game state updates - with interpolation
+// Game state updates - server is authoritative
 socket.on('gameState', (data) => {
-    // Update other players with interpolation target
+    // Update ALL players from server (including yourself)
     Object.keys(data.players).forEach(id => {
-        if (id === myPlayerId) return; // Skip self
+        const serverPlayer = data.players[id];
         
-        if (players[id]) {
-            // Store previous position for interpolation
-            players[id].prevX = players[id].x;
-            players[id].prevY = players[id].y;
-            players[id].targetX = data.players[id].x;
-            players[id].targetY = data.players[id].y;
-            players[id].angle = data.players[id].angle;
-            players[id].health = data.players[id].health;
-            players[id].ammo = data.players[id].ammo;
-            players[id].kills = data.players[id].kills;
-            players[id].score = data.players[id].score;
-            players[id].class = data.players[id].class;
-            players[id].color = data.players[id].color;
+        if (id === myPlayerId) {
+            // Update your stats from server (health, ammo, etc)
+            if (players[id]) {
+                players[id].health = serverPlayer.health;
+                players[id].ammo = serverPlayer.ammo;
+                players[id].kills = serverPlayer.kills;
+                players[id].score = serverPlayer.score;
+                players[id].speed = serverPlayer.speed;
+                
+                // Reconcile position (server wins if too far off)
+                const dx = serverPlayer.x - players[id].x;
+                const dy = serverPlayer.y - players[id].y;
+                const distSquared = dx * dx + dy * dy;
+                
+                if (distSquared > 2500) { // If more than 50 pixels off
+                    players[id].x = serverPlayer.x;
+                    players[id].y = serverPlayer.y;
+                }
+            }
         } else {
-            // New player
-            players[id] = data.players[id];
-            players[id].prevX = data.players[id].x;
-            players[id].prevY = data.players[id].y;
-            players[id].targetX = data.players[id].x;
-            players[id].targetY = data.players[id].y;
+            // Other players - use interpolation
+            if (players[id]) {
+                players[id].targetX = serverPlayer.x;
+                players[id].targetY = serverPlayer.y;
+                players[id].angle = serverPlayer.angle;
+                players[id].health = serverPlayer.health;
+                players[id].ammo = serverPlayer.ammo;
+                players[id].kills = serverPlayer.kills;
+                players[id].score = serverPlayer.score;
+                players[id].class = serverPlayer.class;
+                players[id].color = serverPlayer.color;
+            } else {
+                // New player
+                players[id] = { ...serverPlayer };
+                players[id].targetX = serverPlayer.x;
+                players[id].targetY = serverPlayer.y;
+            }
         }
     });
     
@@ -238,10 +255,21 @@ function handleMovement() {
     const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     player.angle = angle;
 
-    // Update position locally (client-side prediction with collision)
+    // Send movement input to server
+    const now = Date.now();
+    if (now - lastMoveUpdate > MOVE_UPDATE_INTERVAL || dx !== 0 || dy !== 0) {
+        socket.emit('playerInput', {
+            dx: dx,
+            dy: dy,
+            angle: angle
+        });
+        lastMoveUpdate = now;
+    }
+    
+    // Optimistic local movement (will be corrected by server)
     if (dx !== 0 || dy !== 0) {
-        const newX = player.x + dx * player.speed;
-        const newY = player.y + dy * player.speed;
+        const newX = player.x + dx * (player.speed || 5);
+        const newY = player.y + dy * (player.speed || 5);
         
         // Check wall collision before moving
         if (!collidesWithWall(newX, newY)) {
@@ -260,17 +288,6 @@ function handleMovement() {
         // Clamp to map bounds
         player.x = Math.max(15, Math.min(mapWidth - 15, player.x));
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
-    }
-
-    // Only send update to server periodically
-    const now = Date.now();
-    if (now - lastMoveUpdate > MOVE_UPDATE_INTERVAL) {
-        socket.emit('playerMove', {
-            x: player.x,
-            y: player.y,
-            angle: angle
-        });
-        lastMoveUpdate = now;
     }
 
     // Interpolate other players towards their target positions

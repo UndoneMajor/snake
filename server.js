@@ -169,27 +169,24 @@ io.on('connection', (socket) => {
     console.log(`✅ Player joined as ${playerClass}: ${socket.id}`);
   });
 
-  // Handle player movement (with rate limiting)
-  let lastMove = {};
-  
-  socket.on('playerMove', (data) => {
-    const now = Date.now();
-    if (lastMove[socket.id] && now - lastMove[socket.id] < 50) return; // Max 20 updates/sec
-    lastMove[socket.id] = now;
+  // Handle player input (server authoritative)
+  socket.on('playerInput', (data) => {
+    if (!players[socket.id]) return;
     
-    if (players[socket.id]) {
-      const player = players[socket.id];
+    const player = players[socket.id];
+    const { dx, dy, angle } = data;
+    
+    // Server processes movement
+    if (dx !== 0 || dy !== 0) {
+      const newX = player.x + dx * player.speed;
+      const newY = player.y + dy * player.speed;
       
-      // Clamp to map bounds
-      const newX = Math.max(PLAYER_SIZE/2, Math.min(MAP_WIDTH - PLAYER_SIZE/2, data.x));
-      const newY = Math.max(PLAYER_SIZE/2, Math.min(MAP_HEIGHT - PLAYER_SIZE/2, data.y));
-      
-      // Simple collision check
+      // Check collision
       if (!collidesWithWall(newX, newY)) {
         player.x = newX;
         player.y = newY;
       } else {
-        // Try sliding along walls
+        // Sliding
         if (!collidesWithWall(newX, player.y)) {
           player.x = newX;
         }
@@ -198,8 +195,12 @@ io.on('connection', (socket) => {
         }
       }
       
-      player.angle = data.angle;
+      // Clamp to bounds
+      player.x = Math.max(PLAYER_SIZE/2, Math.min(MAP_WIDTH - PLAYER_SIZE/2, player.x));
+      player.y = Math.max(PLAYER_SIZE/2, Math.min(MAP_HEIGHT - PLAYER_SIZE/2, player.y));
     }
+    
+    player.angle = angle;
   });
 
   // Handle shooting
