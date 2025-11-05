@@ -17,7 +17,7 @@ body {
     display: block;
     width: 100vw;
     height: 100vh;
-    cursor: crosshair;
+    cursor: none;
     background: #05050a;
     image-rendering: crisp-edges;
 }
