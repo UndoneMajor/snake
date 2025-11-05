@@ -188,8 +188,9 @@ function updateBot(botId) {
   const dist = Math.sqrt(dx * dx + dy * dy);
 
   if (dist > 10) {
-    const moveX = (dx / dist) * bot.speed;
-    const moveY = (dy / dist) * bot.speed;
+    const botSpeed = bot.speed || bot.classConfig.speed || PLAYER_SPEED;
+    const moveX = (dx / dist) * botSpeed;
+    const moveY = (dy / dist) * botSpeed;
     
     const newX = bot.x + moveX;
     const newY = bot.y + moveY;
@@ -282,9 +283,13 @@ function updateBot(botId) {
       switch(powerUp.type) {
         case 'health': bot.health = Math.min(100, bot.health + 30); break;
         case 'speed': 
-          const baseSpeed = bot.classConfig.speed;
+          const baseSpeed = bot.classConfig.speed || PLAYER_SPEED;
           bot.speed = baseSpeed * 1.3;
-          setTimeout(() => { if (players[botId]) players[botId].speed = baseSpeed; }, 5000);
+          setTimeout(() => { 
+            if (players[botId]) {
+              players[botId].speed = baseSpeed;
+            }
+          }, 5000);
           break;
         case 'ammo': 
           bot.reserve = Math.min(bot.classConfig.maxReserve, bot.reserve + bot.classConfig.maxAmmo);
