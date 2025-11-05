@@ -7,9 +7,21 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Player Number Selection Modal -->
+    <div id="numberModal" class="modal">
+        <div class="modal-content">
+            <h2>Choose Your Number</h2>
+            <p>Pick a number to identify yourself in the game!</p>
+            <div class="number-grid" id="numberGrid"></div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <h1>🐍 Multiplayer Snake</h1>
+            <div class="player-info">
+                <span>Your Number: <strong id="playerNumber">-</strong></span>
+            </div>
             <div class="stats">
                 <div class="stat-box">
                     <span class="label">Your Score:</span>

@@ -6,11 +6,53 @@ const playerCountElement = document.getElementById('playerCount');
 const gameOverElement = document.getElementById('gameOver');
 const finalScoreElement = document.getElementById('finalScore');
 const leaderboardList = document.getElementById('leaderboardList');
+const numberModal = document.getElementById('numberModal');
+const numberGrid = document.getElementById('numberGrid');
+const playerNumberElement = document.getElementById('playerNumber');
 
 const GRID_SIZE = 20;
 let myPlayerId = null;
+let myPlayerNumber = null;
 let players = {};
 let food = { x: 0, y: 0 };
+let lastUpdateTime = Date.now();
+let interpolationFactor = 0;
+
+// Show number selection modal on load
+window.addEventListener('load', () => {
+    showNumberSelection();
+});
+
+function showNumberSelection() {
+    // Generate number buttons (1-20)
+    numberGrid.innerHTML = '';
+    for (let i = 1; i <= 20; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'number-btn';
+        btn.textContent = i;
+        btn.onclick = () => selectNumber(i);
+        btn.id = `num-${i}`;
+        numberGrid.appendChild(btn);
+    }
+    numberModal.classList.remove('hidden');
+}
+
+function selectNumber(num) {
+    myPlayerNumber = num;
+    playerNumberElement.textContent = num;
+    socket.emit('chooseNumber', num);
+    numberModal.classList.add('hidden');
+}
+
+// Handle number taken
+socket.on('numberTaken', (num) => {
+    const btn = document.getElementById(`num-${num}`);
+    if (btn) {
+        btn.classList.add('taken');
+    }
+    alert(`Number ${num} is already taken! Please choose another.`);
+    showNumberSelection();
+});
 
 // Initialize game
 socket.on('init', (data) => {
@@ -34,12 +76,20 @@ socket.on('playerLeft', (playerId) => {
 
 // Handle game state updates
 socket.on('gameState', (data) => {
+    lastUpdateTime = Date.now();
     players = data.players;
     food = data.food;
-    draw();
     updateLeaderboard();
     updatePlayerCount();
 });
+
+// Smooth animation loop
+function animate() {
+    draw();
+    requestAnimationFrame(animate);
+}
+
+animate();
 
 // Handle food eaten
 socket.on('foodEaten', (data) => {
@@ -172,41 +222,55 @@ function drawSnake(player) {
         const isHead = index === 0;
         const isMe = player.id === myPlayerId;
         
-        // Draw segment
+        // Smooth interpolation for movement
+        const now = Date.now();
+        const timeSinceUpdate = now - lastUpdateTime;
+        const smoothFactor = Math.min(timeSinceUpdate / 100, 1); // 100ms = one game tick
+        
+        let drawX = segment.x;
+        let drawY = segment.y;
+        
+        // Smooth segment with slight lag effect
+        if (index > 0 && player.snake[index - 1]) {
+            const prev = player.snake[index - 1];
+            const dx = prev.x - segment.x;
+            const dy = prev.y - segment.y;
+            
+            drawX = segment.x + dx * smoothFactor * 0.3;
+            drawY = segment.y + dy * smoothFactor * 0.3;
+        }
+        
+        // Draw segment with rounded corners
         ctx.fillStyle = player.color;
         if (isMe) {
             ctx.shadowBlur = 15;
             ctx.shadowColor = player.color;
         }
         
-        ctx.fillRect(
-            segment.x + 1,
-            segment.y + 1,
-            GRID_SIZE - 2,
-            GRID_SIZE - 2
-        );
+        // Rounded rectangle
+        const radius = 4;
+        ctx.beginPath();
+        ctx.roundRect(drawX + 1, drawY + 1, GRID_SIZE - 2, GRID_SIZE - 2, radius);
+        ctx.fill();
         
         ctx.shadowBlur = 0;
         
-        // Draw eyes on head
-        if (isHead) {
+        // Draw number on head
+        if (isHead && player.number) {
             ctx.fillStyle = '#fff';
-            const eyeSize = 3;
-            const eyeOffset = 5;
-            
-            if (player.direction === 'RIGHT') {
-                ctx.fillRect(segment.x + GRID_SIZE - eyeOffset, segment.y + 4, eyeSize, eyeSize);
-                ctx.fillRect(segment.x + GRID_SIZE - eyeOffset, segment.y + GRID_SIZE - 7, eyeSize, eyeSize);
-            } else if (player.direction === 'LEFT') {
-                ctx.fillRect(segment.x + eyeOffset - eyeSize, segment.y + 4, eyeSize, eyeSize);
-                ctx.fillRect(segment.x + eyeOffset - eyeSize, segment.y + GRID_SIZE - 7, eyeSize, eyeSize);
-            } else if (player.direction === 'UP') {
-                ctx.fillRect(segment.x + 4, segment.y + eyeOffset - eyeSize, eyeSize, eyeSize);
-                ctx.fillRect(segment.x + GRID_SIZE - 7, segment.y + eyeOffset - eyeSize, eyeSize, eyeSize);
-            } else {
-                ctx.fillRect(segment.x + 4, segment.y + GRID_SIZE - eyeOffset, eyeSize, eyeSize);
-                ctx.fillRect(segment.x + GRID_SIZE - 7, segment.y + GRID_SIZE - eyeOffset, eyeSize, eyeSize);
-            }
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(player.number, drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2);
+        }
+        
+        // Draw bot name on head
+        if (isHead && player.isBot) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🤖', drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2);
         }
     });
 }
@@ -236,6 +300,18 @@ function updateLeaderboard() {
     }).join('');
 }
 
-// Initial draw
-draw();
+// Add roundRect polyfill for older browsers
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+        this.moveTo(x + radius, y);
+        this.lineTo(x + width - radius, y);
+        this.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.lineTo(x + width, y + height - radius);
+        this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.lineTo(x + radius, y + height);
+        this.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.lineTo(x, y + radius);
+        this.quadraticCurveTo(x, y, x + radius, y);
+    };
+}
 

@@ -51,7 +51,8 @@ function createBot() {
     score: 0,
     alive: true,
     isBot: true,
-    name: botNames[Math.floor(Math.random() * botNames.length)]
+    name: botNames[Math.floor(Math.random() * botNames.length)],
+    number: null // Bots don't have numbers
   };
 
   players[botId].snake = [
@@ -149,35 +150,49 @@ setTimeout(spawnInitialBots, 2000); // Spawn bots 2 seconds after server start
 io.on('connection', (socket) => {
   console.log(`🎮 Player connected: ${socket.id}`);
 
-  // Create new player
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-  const randomColor = colors[Math.floor(Math.random() * colors.length)];
-  
-  players[socket.id] = {
-    id: socket.id,
-    x: Math.floor(Math.random() * 20) * GRID_SIZE,
-    y: Math.floor(Math.random() * 20) * GRID_SIZE,
-    snake: [],
-    direction: 'RIGHT',
-    color: randomColor,
-    score: 0,
-    alive: true
-  };
+  // Wait for player to choose number
+  socket.on('chooseNumber', (playerNumber) => {
+    // Check if number is already taken
+    const numberTaken = Object.values(players).some(p => !p.isBot && p.number === playerNumber);
+    
+    if (numberTaken) {
+      socket.emit('numberTaken', playerNumber);
+      return;
+    }
 
-  // Initialize snake
-  players[socket.id].snake = [
-    { x: players[socket.id].x, y: players[socket.id].y }
-  ];
+    // Create new player
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    players[socket.id] = {
+      id: socket.id,
+      x: Math.floor(Math.random() * 20) * GRID_SIZE,
+      y: Math.floor(Math.random() * 20) * GRID_SIZE,
+      snake: [],
+      direction: 'RIGHT',
+      color: randomColor,
+      score: 0,
+      alive: true,
+      number: playerNumber
+    };
 
-  // Send current game state to new player
-  socket.emit('init', {
-    playerId: socket.id,
-    players: players,
-    food: food
+    // Initialize snake
+    players[socket.id].snake = [
+      { x: players[socket.id].x, y: players[socket.id].y }
+    ];
+
+    // Send current game state to new player
+    socket.emit('init', {
+      playerId: socket.id,
+      players: players,
+      food: food
+    });
+
+    // Broadcast new player to all others
+    socket.broadcast.emit('playerJoined', players[socket.id]);
+
+    console.log(`✅ Player #${playerNumber} joined: ${socket.id}`);
   });
-
-  // Broadcast new player to all others
-  socket.broadcast.emit('playerJoined', players[socket.id]);
 
   // Handle player movement
   socket.on('changeDirection', (direction) => {
