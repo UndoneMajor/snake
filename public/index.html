@@ -54,37 +54,55 @@
 
     <!-- In-Game HUD -->
     <div class="hud">
+        <!-- Top Left: Health -->
         <div class="hud-top-left">
             <div class="hud-health">
-                <div class="health-bar-hud">
-                    <div id="healthFill" class="health-fill"></div>
+                <div class="health-container">
+                    <div class="health-label">HP</div>
+                    <div class="health-bar-hud">
+                        <div id="healthFill" class="health-fill"></div>
+                        <div class="health-scan"></div>
+                    </div>
+                    <span id="healthText">100</span>
                 </div>
-                <span id="healthText">100</span>
             </div>
             <div class="hud-item">
-                <span class="hud-label">AMMO</span>
-                <span id="ammo" class="hud-value">30</span>
+                <span class="hud-icon">▣</span>
+                <div>
+                    <div class="hud-label">AMMO</div>
+                    <span id="ammo" class="hud-value">30</span>
+                </div>
             </div>
         </div>
 
+        <!-- Top Right: Stats -->
         <div class="hud-top-right">
             <div class="hud-item">
-                <span class="hud-label">CLASS</span>
-                <span id="playerClass" class="hud-value">-</span>
+                <div>
+                    <div class="hud-label">CLASS</div>
+                    <span id="playerClass" class="hud-value">-</span>
+                </div>
             </div>
             <div class="hud-item">
-                <span class="hud-label">KILLS</span>
-                <span id="kills" class="hud-value">0</span>
+                <span class="hud-icon">✦</span>
+                <div>
+                    <div class="hud-label">KILLS</div>
+                    <span id="kills" class="hud-value">0</span>
+                </div>
             </div>
             <div class="hud-item">
-                <span class="hud-label">SCORE</span>
-                <span id="score" class="hud-value">0</span>
+                <span class="hud-icon">◈</span>
+                <div>
+                    <div class="hud-label">SCORE</div>
+                    <span id="score" class="hud-value">0</span>
+                </div>
             </div>
         </div>
 
+        <!-- Bottom Right: Leaderboard -->
         <div class="hud-bottom-right">
             <div class="leaderboard-mini">
-                <h4>🏆 TOP 5</h4>
+                <h4>◆ RANKINGS ◆</h4>
                 <div id="leaderboardList"></div>
             </div>
         </div>

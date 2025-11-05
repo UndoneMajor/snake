@@ -205,14 +205,14 @@ let rawMouse = { x: 0, y: 0 };
 
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    rawMouse.x = e.clientX - rect.left;
-    rawMouse.y = e.clientY - rect.top;
+    rawMouse.x = (e.clientX - rect.left) / ZOOM_LEVEL;
+    rawMouse.y = (e.clientY - rect.top) / ZOOM_LEVEL;
 });
 
 canvas.addEventListener('mouseenter', (e) => {
     const rect = canvas.getBoundingClientRect();
-    rawMouse.x = e.clientX - rect.left;
-    rawMouse.y = e.clientY - rect.top;
+    rawMouse.x = (e.clientX - rect.left) / ZOOM_LEVEL;
+    rawMouse.y = (e.clientY - rect.top) / ZOOM_LEVEL;
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -231,18 +231,20 @@ canvas.addEventListener('mouseup', (e) => {
 // Prevent context menu
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Update camera to follow player
+// Update camera to follow player with zoom (reduced FOV)
+const ZOOM_LEVEL = 1.3; // 1.3 = 30% zoom in (reduced FOV)
+
 function updateCamera() {
     const player = players[myPlayerId];
     if (!player) return;
 
-    // Center camera on player
-    camera.x = player.x - canvas.width / 2;
-    camera.y = player.y - canvas.height / 2;
+    // Center camera on player with zoom
+    camera.x = player.x - (canvas.width / ZOOM_LEVEL) / 2;
+    camera.y = player.y - (canvas.height / ZOOM_LEVEL) / 2;
 
     // Clamp camera to map bounds
-    camera.x = Math.max(0, Math.min(mapWidth - canvas.width, camera.x));
-    camera.y = Math.max(0, Math.min(mapHeight - canvas.height, camera.y));
+    camera.x = Math.max(0, Math.min(mapWidth - canvas.width / ZOOM_LEVEL, camera.x));
+    camera.y = Math.max(0, Math.min(mapHeight - canvas.height / ZOOM_LEVEL, camera.y));
 }
 
 // Game loop
@@ -363,8 +365,9 @@ function draw() {
     ctx.fillStyle = '#0f0f1e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Save context and apply camera transform
+    // Save context and apply camera transform with zoom
     ctx.save();
+    ctx.scale(ZOOM_LEVEL, ZOOM_LEVEL);
     ctx.translate(-camera.x, -camera.y);
 
     // Draw grid (world coordinates)
