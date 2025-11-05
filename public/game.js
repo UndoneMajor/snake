@@ -588,21 +588,21 @@ function shoot() {
         
         bullets[localBullet.id] = localBullet;
         
-        if (myClass !== 'pyro') {
-            const hitPlayer = checkInstantHit(localBullet);
-            if (hitPlayer) {
-                socket.emit('clientHit', { 
-                    victimId: hitPlayer.id, 
-                    bulletAngle: bulletAngle,
-                    timestamp: Date.now() - (currentPing / 2)
-                });
-            }
+        const hitPlayer = checkInstantHit(localBullet);
+        if (hitPlayer) {
+            socket.emit('clientHit', { 
+                victimId: hitPlayer.id, 
+                bulletAngle: bulletAngle,
+                timestamp: Date.now() - (currentPing / 2)
+            });
         }
     }
 
     player.ammo--;
 
-    socket.emit('shoot', { angle: angle });
+    if (myClass !== 'pyro') {
+        socket.emit('shoot', { angle: angle });
+    }
 }
 
 function draw() {

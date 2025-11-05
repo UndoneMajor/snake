@@ -244,31 +244,33 @@ function updateBot(botId) {
         }
       }, 100);
       
-      for (let i = 0; i < bot.classConfig.bulletCount; i++) {
-        let angle = bot.angle;
-        if (bot.classConfig.bulletCount > 1) {
-          angle += (i - (bot.classConfig.bulletCount - 1) / 2) * bot.classConfig.spread;
+      if (bot.class !== 'pyro') {
+        for (let i = 0; i < bot.classConfig.bulletCount; i++) {
+          let angle = bot.angle;
+          if (bot.classConfig.bulletCount > 1) {
+            angle += (i - (bot.classConfig.bulletCount - 1) / 2) * bot.classConfig.spread;
+          }
+
+          const damage = bot.class === 'sniper' ? bot.classConfig.baseDamage : bot.classConfig.damage;
+
+          const bulletId = `bullet_${bulletIdCounter++}`;
+          bullets[bulletId] = {
+            id: bulletId,
+            x: bot.x,
+            y: bot.y,
+            vx: Math.cos(angle) * bot.classConfig.bulletSpeed,
+            vy: Math.sin(angle) * bot.classConfig.bulletSpeed,
+            velocityX: Math.cos(angle) * bot.classConfig.bulletSpeed,
+            velocityY: Math.sin(angle) * bot.classConfig.bulletSpeed,
+            ownerId: botId,
+            color: bot.color,
+            damage: damage,
+            class: bot.class,
+            startX: bot.x,
+            startY: bot.y
+          };
+          io.emit('bulletFired', bullets[bulletId]);
         }
-
-        const damage = bot.class === 'sniper' ? bot.classConfig.baseDamage : bot.classConfig.damage;
-
-        const bulletId = `bullet_${bulletIdCounter++}`;
-        bullets[bulletId] = {
-          id: bulletId,
-          x: bot.x,
-          y: bot.y,
-          vx: Math.cos(angle) * bot.classConfig.bulletSpeed,
-          vy: Math.sin(angle) * bot.classConfig.bulletSpeed,
-          velocityX: Math.cos(angle) * bot.classConfig.bulletSpeed,
-          velocityY: Math.sin(angle) * bot.classConfig.bulletSpeed,
-          ownerId: botId,
-          color: bot.color,
-          damage: damage,
-          class: bot.class,
-          startX: bot.x,
-          startY: bot.y
-        };
-        io.emit('bulletFired', bullets[bulletId]);
       }
     }
   }
@@ -436,6 +438,7 @@ io.on('connection', (socket) => {
   socket.on('shoot', (data) => {
     const player = players[socket.id];
     if (!player || player.ammo <= 0 || player.isReloading) return;
+    if (player.class === 'pyro') return;
 
     player.ammo--;
     const config = player.classConfig;
