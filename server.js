@@ -75,15 +75,24 @@ const walls = [
   { x: 500, y: 1400, width: 600, height: 40 },
 ];
 
-// Check if position collides with walls
+// Optimized collision check - early exit
 function collidesWithWall(x, y, size = PLAYER_SIZE) {
   const halfSize = size / 2;
-  return walls.some(wall => 
-    x + halfSize > wall.x &&
-    x - halfSize < wall.x + wall.width &&
-    y + halfSize > wall.y &&
-    y - halfSize < wall.y + wall.height
-  );
+  const left = x - halfSize;
+  const right = x + halfSize;
+  const top = y - halfSize;
+  const bottom = y + halfSize;
+  
+  for (let i = 0; i < walls.length; i++) {
+    const wall = walls[i];
+    if (right > wall.x && 
+        left < wall.x + wall.width && 
+        bottom > wall.y && 
+        top < wall.y + wall.height) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Generate random position (avoiding walls)
@@ -160,24 +169,30 @@ io.on('connection', (socket) => {
     console.log(`✅ Player joined as ${playerClass}: ${socket.id}`);
   });
 
-  // Handle player movement
+  // Handle player movement (with rate limiting)
+  let lastMove = {};
+  
   socket.on('playerMove', (data) => {
+    const now = Date.now();
+    if (lastMove[socket.id] && now - lastMove[socket.id] < 16) return; // Max 60 updates/sec
+    lastMove[socket.id] = now;
+    
     if (players[socket.id]) {
       const player = players[socket.id];
       
-      // Check wall collision before moving
+      // Clamp to map bounds
       const newX = Math.max(PLAYER_SIZE/2, Math.min(MAP_WIDTH - PLAYER_SIZE/2, data.x));
       const newY = Math.max(PLAYER_SIZE/2, Math.min(MAP_HEIGHT - PLAYER_SIZE/2, data.y));
       
+      // Simple collision check
       if (!collidesWithWall(newX, newY)) {
         player.x = newX;
         player.y = newY;
       } else {
-        // Try moving only on X axis
+        // Try sliding along walls
         if (!collidesWithWall(newX, player.y)) {
           player.x = newX;
         }
-        // Try moving only on Y axis
         if (!collidesWithWall(player.x, newY)) {
           player.y = newY;
         }
@@ -260,36 +275,44 @@ io.on('connection', (socket) => {
   });
 });
 
-// Game loop
+// Game loop - optimized
 setInterval(() => {
+  const bulletIds = Object.keys(bullets);
+  const playerIds = Object.keys(players);
+  
   // Update bullets
-  Object.keys(bullets).forEach(bulletId => {
+  for (let i = bulletIds.length - 1; i >= 0; i--) {
+    const bulletId = bulletIds[i];
     const bullet = bullets[bulletId];
+    
     bullet.x += bullet.velocityX;
     bullet.y += bullet.velocityY;
+
+    // Quick bounds check first (faster than wall check)
+    if (bullet.x < 0 || bullet.x > MAP_WIDTH || bullet.y < 0 || bullet.y > MAP_HEIGHT) {
+      delete bullets[bulletId];
+      continue;
+    }
 
     // Check wall collision
     if (collidesWithWall(bullet.x, bullet.y, 10)) {
       delete bullets[bulletId];
-      return;
-    }
-
-    // Remove out of bounds bullets
-    if (bullet.x < 0 || bullet.x > MAP_WIDTH || bullet.y < 0 || bullet.y > MAP_HEIGHT) {
-      delete bullets[bulletId];
-      return;
+      continue;
     }
 
     // Check collision with players
-    Object.keys(players).forEach(playerId => {
-      if (playerId === bullet.ownerId) return;
+    let hit = false;
+    for (let j = 0; j < playerIds.length; j++) {
+      const playerId = playerIds[j];
+      if (playerId === bullet.ownerId) continue;
       
       const player = players[playerId];
       const dx = player.x - bullet.x;
       const dy = player.y - bullet.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const distSquared = dx * dx + dy * dy;
+      const hitRadius = (PLAYER_SIZE / 2) * (PLAYER_SIZE / 2);
 
-      if (distance < PLAYER_SIZE / 2) {
+      if (distSquared < hitRadius) {
         // Hit!
         const damage = bullet.damage || 20;
         player.health -= damage;
@@ -316,16 +339,20 @@ setInterval(() => {
         }
 
         delete bullets[bulletId];
+        hit = true;
+        break;
       }
-    });
-  });
+    }
+    
+    if (hit) continue;
+  }
 
   // Broadcast game state
   io.emit('gameState', {
     players: players,
     bullets: bullets
   });
-}, 1000 / 60); // 60 FPS
+}, 1000 / 30); // 30 FPS server tick rate (was 60, now more efficient)
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Multiplayer Shooter Server Running!`);

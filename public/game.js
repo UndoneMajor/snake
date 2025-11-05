@@ -167,6 +167,9 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+let lastMoveUpdate = 0;
+const MOVE_UPDATE_INTERVAL = 50; // Send updates every 50ms instead of every frame
+
 function handleMovement() {
     const player = players[myPlayerId];
     if (!player) return;
@@ -185,19 +188,25 @@ function handleMovement() {
         dy *= 0.707;
     }
 
+    // Always calculate angle to mouse (even when not moving)
+    const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    player.angle = angle;
+
+    // Update position locally (client-side prediction)
     if (dx !== 0 || dy !== 0) {
         player.x += dx * player.speed;
         player.y += dy * player.speed;
+    }
 
-        // Calculate angle to mouse
-        const angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-        player.angle = angle;
-
+    // Only send update to server periodically
+    const now = Date.now();
+    if (now - lastMoveUpdate > MOVE_UPDATE_INTERVAL) {
         socket.emit('playerMove', {
             x: player.x,
             y: player.y,
             angle: angle
         });
+        lastMoveUpdate = now;
     }
 
     // Check power-up collection
