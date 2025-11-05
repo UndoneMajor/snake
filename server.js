@@ -14,204 +14,245 @@ app.use(express.static('public'));
 
 // Game state
 const players = {};
-const food = { x: 0, y: 0 };
-const GRID_SIZE = 20;
-const CANVAS_SIZE = 600;
-const MAX_BOTS = 3; // Maximum number of AI bots
-let botCounter = 0;
+const bullets = {};
+const powerUps = {};
+let bulletIdCounter = 0;
+let powerUpIdCounter = 0;
 
-// Generate random food position
-function generateFood() {
-  food.x = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE;
-  food.y = Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)) * GRID_SIZE;
-}
+const MAP_WIDTH = 2400;
+const MAP_HEIGHT = 1800;
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600;
+const PLAYER_SIZE = 30;
+const PLAYER_SPEED = 5;
 
-// Initialize food
-generateFood();
+// Class configurations
+const CLASS_CONFIGS = {
+  shotgun: {
+    bulletSpeed: 6,
+    bulletCount: 3,
+    spread: 0.3,
+    fireRate: 600,
+    damage: 20,
+    maxAmmo: 20
+  },
+  sniper: {
+    bulletSpeed: 15,
+    bulletCount: 1,
+    spread: 0,
+    fireRate: 800,
+    damage: 30,
+    maxAmmo: 15
+  },
+  rifle: {
+    bulletSpeed: 10,
+    bulletCount: 1,
+    spread: 0.05,
+    fireRate: 100,
+    damage: 15,
+    maxAmmo: 40
+  }
+};
 
-// AI Bot names
-const botNames = [
-  'Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 
-  'Bot Sigma', 'Bot Omega', 'Bot Prime', 'Bot Ultra'
+// Walls
+const walls = [
+  // Border walls
+  { x: 0, y: 0, width: MAP_WIDTH, height: 20 }, // Top
+  { x: 0, y: MAP_HEIGHT - 20, width: MAP_WIDTH, height: 20 }, // Bottom
+  { x: 0, y: 0, width: 20, height: MAP_HEIGHT }, // Left
+  { x: MAP_WIDTH - 20, y: 0, width: 20, height: MAP_HEIGHT }, // Right
+  
+  // Interior walls
+  { x: 400, y: 200, width: 200, height: 40 },
+  { x: 800, y: 400, width: 40, height: 300 },
+  { x: 1200, y: 300, width: 300, height: 40 },
+  { x: 600, y: 800, width: 40, height: 400 },
+  { x: 1400, y: 600, width: 400, height: 40 },
+  { x: 1000, y: 1000, width: 40, height: 300 },
+  { x: 300, y: 1200, width: 500, height: 40 },
+  { x: 1600, y: 800, width: 40, height: 400 },
+  { x: 1800, y: 300, width: 300, height: 40 },
+  { x: 500, y: 1400, width: 600, height: 40 },
 ];
 
-// Create AI bot
-function createBot() {
-  const botId = `bot_${botCounter++}`;
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-  const randomColor = colors[Math.floor(Math.random() * colors.length)];
+// Check if position collides with walls
+function collidesWithWall(x, y, size = PLAYER_SIZE) {
+  const halfSize = size / 2;
+  return walls.some(wall => 
+    x + halfSize > wall.x &&
+    x - halfSize < wall.x + wall.width &&
+    y + halfSize > wall.y &&
+    y - halfSize < wall.y + wall.height
+  );
+}
+
+// Generate random position (avoiding walls)
+function randomPosition() {
+  let x, y, attempts = 0;
+  do {
+    x = Math.random() * (MAP_WIDTH - 100) + 50;
+    y = Math.random() * (MAP_HEIGHT - 100) + 50;
+    attempts++;
+  } while (collidesWithWall(x, y) && attempts < 100);
   
-  players[botId] = {
-    id: botId,
-    x: Math.floor(Math.random() * 20) * GRID_SIZE,
-    y: Math.floor(Math.random() * 20) * GRID_SIZE,
-    snake: [],
-    direction: ['UP', 'DOWN', 'LEFT', 'RIGHT'][Math.floor(Math.random() * 4)],
-    color: randomColor,
-    score: 0,
-    alive: true,
-    isBot: true,
-    name: botNames[Math.floor(Math.random() * botNames.length)],
-    number: null // Bots don't have numbers
+  return { x, y };
+}
+
+// Spawn power-ups
+function spawnPowerUp() {
+  const id = `powerup_${powerUpIdCounter++}`;
+  const types = ['health', 'speed', 'ammo'];
+  powerUps[id] = {
+    id,
+    ...randomPosition(),
+    type: types[Math.floor(Math.random() * types.length)]
   };
-
-  players[botId].snake = [
-    { x: players[botId].x, y: players[botId].y }
-  ];
-
-  console.log(`🤖 Bot spawned: ${players[botId].name}`);
-  io.emit('playerJoined', players[botId]);
+  io.emit('powerUpSpawned', powerUps[id]);
 }
 
-// AI bot decision making
-function updateBotDirection(botId) {
-  const bot = players[botId];
-  if (!bot || !bot.alive) return;
-
-  const head = bot.snake[0];
-  
-  // Calculate distance to food
-  const foodDx = food.x - head.x;
-  const foodDy = food.y - head.y;
-  
-  // Possible directions
-  const directions = [];
-  
-  // Prefer moving towards food
-  if (Math.abs(foodDx) > Math.abs(foodDy)) {
-    if (foodDx > 0) directions.push('RIGHT');
-    else if (foodDx < 0) directions.push('LEFT');
-    if (foodDy > 0) directions.push('DOWN');
-    else if (foodDy < 0) directions.push('UP');
-  } else {
-    if (foodDy > 0) directions.push('DOWN');
-    else if (foodDy < 0) directions.push('UP');
-    if (foodDx > 0) directions.push('RIGHT');
-    else if (foodDx < 0) directions.push('LEFT');
-  }
-
-  // Add some randomness (20% chance to pick random direction)
-  if (Math.random() < 0.2) {
-    const allDirections = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-    directions.push(allDirections[Math.floor(Math.random() * allDirections.length)]);
-  }
-
-  // Try each direction and pick first valid one
-  for (let direction of directions) {
-    const currentDir = bot.direction;
-    
-    // Check if valid direction (no 180 degree turns)
-    if (
-      (direction === 'UP' && currentDir !== 'DOWN') ||
-      (direction === 'DOWN' && currentDir !== 'UP') ||
-      (direction === 'LEFT' && currentDir !== 'RIGHT') ||
-      (direction === 'RIGHT' && currentDir !== 'LEFT')
-    ) {
-      // Check if this direction is safe
-      const testHead = { ...head };
-      switch (direction) {
-        case 'UP': testHead.y -= GRID_SIZE; break;
-        case 'DOWN': testHead.y += GRID_SIZE; break;
-        case 'LEFT': testHead.x -= GRID_SIZE; break;
-        case 'RIGHT': testHead.x += GRID_SIZE; break;
-      }
-
-      // Basic safety check (avoid immediate walls)
-      if (testHead.x >= 0 && testHead.x < CANVAS_SIZE && 
-          testHead.y >= 0 && testHead.y < CANVAS_SIZE) {
-        bot.direction = direction;
-        return;
-      }
-    }
-  }
-}
-
-// Spawn initial bots
-function spawnInitialBots() {
-  for (let i = 0; i < MAX_BOTS; i++) {
-    createBot();
-  }
-}
-
-// Respawn bot after death
-function respawnBot(botId) {
-  setTimeout(() => {
-    const botCount = Object.values(players).filter(p => p.isBot && p.alive).length;
-    if (botCount < MAX_BOTS) {
-      createBot();
-    }
-  }, 5000); // Respawn after 5 seconds
-}
-
-// Initialize bots
-setTimeout(spawnInitialBots, 2000); // Spawn bots 2 seconds after server start
+// Initial power-ups
+setInterval(spawnPowerUp, 10000); // Spawn every 10 seconds
+for (let i = 0; i < 3; i++) spawnPowerUp();
 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log(`🎮 Player connected: ${socket.id}`);
 
-  // Wait for player to choose number
-  socket.on('chooseNumber', (playerNumber) => {
-    // Check if number is already taken
-    const numberTaken = Object.values(players).some(p => !p.isBot && p.number === playerNumber);
-    
-    if (numberTaken) {
-      socket.emit('numberTaken', playerNumber);
-      return;
-    }
+  // Wait for class selection
+  socket.on('selectClass', (playerClass) => {
+    if (!CLASS_CONFIGS[playerClass]) return;
 
-    // Create new player
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#E74C3C', '#3498DB'];
+    const pos = randomPosition();
+    const config = CLASS_CONFIGS[playerClass];
     
     players[socket.id] = {
       id: socket.id,
-      x: Math.floor(Math.random() * 20) * GRID_SIZE,
-      y: Math.floor(Math.random() * 20) * GRID_SIZE,
-      snake: [],
-      direction: 'RIGHT',
-      color: randomColor,
+      x: pos.x,
+      y: pos.y,
+      angle: 0,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      health: 100,
+      maxHealth: 100,
       score: 0,
-      alive: true,
-      number: playerNumber
+      kills: 0,
+      deaths: 0,
+      speed: PLAYER_SPEED,
+      ammo: config.maxAmmo,
+      class: playerClass,
+      classConfig: config
     };
 
-    // Initialize snake
-    players[socket.id].snake = [
-      { x: players[socket.id].x, y: players[socket.id].y }
-    ];
-
-    // Send current game state to new player
+    // Send init data
     socket.emit('init', {
       playerId: socket.id,
       players: players,
-      food: food
+      bullets: bullets,
+      powerUps: powerUps,
+      walls: walls,
+      mapWidth: MAP_WIDTH,
+      mapHeight: MAP_HEIGHT
     });
 
-    // Broadcast new player to all others
+    // Broadcast new player
     socket.broadcast.emit('playerJoined', players[socket.id]);
 
-    console.log(`✅ Player #${playerNumber} joined: ${socket.id}`);
+    console.log(`✅ Player joined as ${playerClass}: ${socket.id}`);
   });
 
   // Handle player movement
-  socket.on('changeDirection', (direction) => {
-    if (players[socket.id] && players[socket.id].alive) {
-      const currentDir = players[socket.id].direction;
+  socket.on('playerMove', (data) => {
+    if (players[socket.id]) {
+      const player = players[socket.id];
       
-      // Prevent 180 degree turns
-      if (
-        (direction === 'UP' && currentDir !== 'DOWN') ||
-        (direction === 'DOWN' && currentDir !== 'UP') ||
-        (direction === 'LEFT' && currentDir !== 'RIGHT') ||
-        (direction === 'RIGHT' && currentDir !== 'LEFT')
-      ) {
-        players[socket.id].direction = direction;
+      // Check wall collision before moving
+      const newX = Math.max(PLAYER_SIZE/2, Math.min(MAP_WIDTH - PLAYER_SIZE/2, data.x));
+      const newY = Math.max(PLAYER_SIZE/2, Math.min(MAP_HEIGHT - PLAYER_SIZE/2, data.y));
+      
+      if (!collidesWithWall(newX, newY)) {
+        player.x = newX;
+        player.y = newY;
+      } else {
+        // Try moving only on X axis
+        if (!collidesWithWall(newX, player.y)) {
+          player.x = newX;
+        }
+        // Try moving only on Y axis
+        if (!collidesWithWall(player.x, newY)) {
+          player.y = newY;
+        }
       }
+      
+      player.angle = data.angle;
     }
   });
 
-  // Handle player disconnect
+  // Handle shooting
+  socket.on('shoot', (data) => {
+    const player = players[socket.id];
+    if (!player || player.ammo <= 0) return;
+
+    player.ammo--;
+    const config = player.classConfig;
+
+    // Fire multiple bullets (for shotgun)
+    for (let i = 0; i < config.bulletCount; i++) {
+      const bulletId = `bullet_${bulletIdCounter++}`;
+      
+      // Calculate spread
+      let angle = data.angle;
+      if (config.bulletCount > 1) {
+        // Shotgun spread
+        const spreadOffset = (i - (config.bulletCount - 1) / 2) * config.spread;
+        angle += spreadOffset;
+      } else if (config.spread > 0) {
+        // Random spread for rifle
+        angle += (Math.random() - 0.5) * config.spread;
+      }
+
+      bullets[bulletId] = {
+        id: bulletId,
+        x: player.x,
+        y: player.y,
+        velocityX: Math.cos(angle) * config.bulletSpeed,
+        velocityY: Math.sin(angle) * config.bulletSpeed,
+        ownerId: socket.id,
+        color: player.color,
+        damage: config.damage,
+        class: player.class
+      };
+
+      io.emit('bulletFired', bullets[bulletId]);
+    }
+  });
+
+  // Handle power-up collection
+  socket.on('collectPowerUp', (powerUpId) => {
+    const player = players[socket.id];
+    const powerUp = powerUps[powerUpId];
+    
+    if (!player || !powerUp) return;
+
+    switch(powerUp.type) {
+      case 'health':
+        player.health = Math.min(player.maxHealth, player.health + 30);
+        break;
+      case 'speed':
+        player.speed = PLAYER_SPEED + 2;
+        setTimeout(() => { 
+          if (players[socket.id]) players[socket.id].speed = PLAYER_SPEED; 
+        }, 5000);
+        break;
+      case 'ammo':
+        player.ammo += 10;
+        break;
+    }
+
+    delete powerUps[powerUpId];
+    io.emit('powerUpCollected', powerUpId);
+  });
+
+  // Handle disconnect
   socket.on('disconnect', () => {
     console.log(`👋 Player disconnected: ${socket.id}`);
     delete players[socket.id];
@@ -221,119 +262,74 @@ io.on('connection', (socket) => {
 
 // Game loop
 setInterval(() => {
-  // Update bot directions every tick
-  Object.keys(players).forEach((playerId) => {
-    if (players[playerId].isBot && players[playerId].alive) {
-      updateBotDirection(playerId);
-    }
-  });
-
-  Object.keys(players).forEach((playerId) => {
-    const player = players[playerId];
-    
-    if (!player.alive) return;
-
-    // Get current head position
-    const head = { ...player.snake[0] };
-
-    // Move based on direction
-    switch (player.direction) {
-      case 'UP':
-        head.y -= GRID_SIZE;
-        break;
-      case 'DOWN':
-        head.y += GRID_SIZE;
-        break;
-      case 'LEFT':
-        head.x -= GRID_SIZE;
-        break;
-      case 'RIGHT':
-        head.x += GRID_SIZE;
-        break;
-    }
+  // Update bullets
+  Object.keys(bullets).forEach(bulletId => {
+    const bullet = bullets[bulletId];
+    bullet.x += bullet.velocityX;
+    bullet.y += bullet.velocityY;
 
     // Check wall collision
-    if (head.x < 0 || head.x >= CANVAS_SIZE || head.y < 0 || head.y >= CANVAS_SIZE) {
-      player.alive = false;
-      io.emit('playerDied', { playerId, killer: null, type: 'wall' });
-      if (player.isBot) {
-        respawnBot(playerId);
-        delete players[playerId];
-      }
+    if (collidesWithWall(bullet.x, bullet.y, 10)) {
+      delete bullets[bulletId];
       return;
     }
 
-    // Check self collision
-    for (let segment of player.snake) {
-      if (head.x === segment.x && head.y === segment.y) {
-        player.alive = false;
-        io.emit('playerDied', { playerId, killer: null, type: 'self' });
-        if (player.isBot) {
-          respawnBot(playerId);
-          delete players[playerId];
-        }
-        return;
-      }
+    // Remove out of bounds bullets
+    if (bullet.x < 0 || bullet.x > MAP_WIDTH || bullet.y < 0 || bullet.y > MAP_HEIGHT) {
+      delete bullets[bulletId];
+      return;
     }
 
-    // Check collision with other players' bodies
-    Object.keys(players).forEach((otherPlayerId) => {
-      if (otherPlayerId === playerId) return; // Skip self
+    // Check collision with players
+    Object.keys(players).forEach(playerId => {
+      if (playerId === bullet.ownerId) return;
       
-      const otherPlayer = players[otherPlayerId];
-      if (!otherPlayer.alive) return; // Skip dead players
-      
-      // Check if current player's head hits another player's body
-      for (let segment of otherPlayer.snake) {
-        if (head.x === segment.x && head.y === segment.y) {
-          player.alive = false;
-          io.emit('playerDied', { 
-            playerId, 
-            killer: otherPlayerId, 
-            type: 'collision' 
-          });
-          if (player.isBot) {
-            respawnBot(playerId);
-            delete players[playerId];
+      const player = players[playerId];
+      const dx = player.x - bullet.x;
+      const dy = player.y - bullet.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < PLAYER_SIZE / 2) {
+        // Hit!
+        const damage = bullet.damage || 20;
+        player.health -= damage;
+        
+        if (player.health <= 0) {
+          // Player died
+          player.deaths++;
+          if (players[bullet.ownerId]) {
+            players[bullet.ownerId].kills++;
+            players[bullet.ownerId].score += 100;
           }
-          return;
+
+          // Respawn
+          const pos = randomPosition();
+          player.x = pos.x;
+          player.y = pos.y;
+          player.health = 100;
+          player.ammo = player.classConfig.maxAmmo;
+
+          io.emit('playerKilled', {
+            killerId: bullet.ownerId,
+            victimId: playerId
+          });
         }
+
+        delete bullets[bulletId];
       }
     });
-
-    // Add new head
-    player.snake.unshift(head);
-
-    // Check food collision
-    if (head.x === food.x && head.y === food.y) {
-      player.score += 10;
-      generateFood();
-      io.emit('foodEaten', { playerId, food, score: player.score });
-    } else {
-      // Remove tail if no food eaten
-      player.snake.pop();
-    }
-
-    // Update player position
-    player.x = head.x;
-    player.y = head.y;
   });
 
-  // Broadcast game state to all players
+  // Broadcast game state
   io.emit('gameState', {
     players: players,
-    food: food
+    bullets: bullets
   });
-}, 100); // Update every 100ms
-
-// Serve index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+}, 1000 / 60); // 60 FPS
 
 server.listen(PORT, () => {
-  console.log(`\n🎮 Multiplayer Game Server Running!`);
+  console.log(`\n🎮 Multiplayer Shooter Server Running!`);
   console.log(`   📍 http://localhost:${PORT}`);
-  console.log(`\n   Open multiple browser tabs to play!\n`);
+  console.log(`\n   Lock and load! 🔫\n`);
 });
 
