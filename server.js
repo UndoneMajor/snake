@@ -513,15 +513,19 @@ io.on('connection', (socket) => {
 const PLAYER_KEYS = () => Object.keys(players);
 const BULLET_KEYS = () => Object.keys(bullets);
 
-setInterval(() => {
-  Object.keys(players).forEach(pid => {
-    if (players[pid]?.isBot) {
-      updateBot(pid);
-    }
-  });
-}, 100);
+let frameCount = 0;
 
 setInterval(() => {
+  frameCount++;
+  
+  if (frameCount % 2 === 0) {
+    Object.keys(players).forEach(pid => {
+      if (players[pid]?.isBot) {
+        updateBot(pid);
+      }
+    });
+  }
+
   const bulletKeys = Object.keys(bullets);
   const playerKeys = Object.keys(players);
   
@@ -587,11 +591,9 @@ setInterval(() => {
       }
     }
   }
-}, 33);
 
-setInterval(() => {
-  io.emit('update', { players, bullets });
-}, 50);
+  io.volatile.emit('update', { players, bullets });
+}, 16);
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Server: http://localhost:${PORT}\n`);

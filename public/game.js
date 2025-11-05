@@ -411,15 +411,11 @@ function handleMovement() {
         player.y = Math.max(15, Math.min(mapHeight - 15, player.y));
     }
     
-    const now = Date.now();
-    if (!lastMoveUpdate || now - lastMoveUpdate > 50) {
-        socket.emit('updatePosition', {
-            x: player.x,
-            y: player.y,
-            angle: player.angle
-        });
-        lastMoveUpdate = now;
-    }
+    socket.emit('updatePosition', {
+        x: player.x,
+        y: player.y,
+        angle: player.angle
+    });
 
     Object.keys(bullets).forEach(bid => {
         const b = bullets[bid];
