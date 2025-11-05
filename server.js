@@ -18,6 +18,7 @@ app.use(express.static('public'));
 const MAP_WIDTH = 2400;
 const MAP_HEIGHT = 1800;
 const PLAYER_SPEED = 3;
+const PLAYER_HIT_RADIUS = 20;
 
 const CLASS_CONFIGS = {
   shotgun: { 
@@ -361,6 +362,43 @@ io.on('connection', (socket) => {
     }, player.classConfig.reloadTime);
   });
 
+  socket.on('clientHit', (data) => {
+    const victim = players[data.victimId];
+    if (!victim) return;
+    
+    const attacker = players[socket.id];
+    if (!attacker) return;
+    
+    const config = attacker.classConfig;
+    let damage = config.damage || 20;
+    
+    if (attacker.class === 'sniper') {
+      damage = config.baseDamage;
+    }
+    
+    victim.health -= damage;
+    
+    if (victim.health <= 0) {
+      attacker.kills++;
+      attacker.score += 100;
+      
+      if (victim.isBot) {
+        delete players[data.victimId];
+        setTimeout(() => {
+          const botCount = Object.values(players).filter(p => p.isBot).length;
+          if (botCount < MAX_BOTS) createBot();
+        }, 5000);
+      } else {
+        io.to(data.victimId).emit('youDied', {
+          killerId: socket.id,
+          killerClass: attacker.class
+        });
+        delete players[data.victimId];
+      }
+      io.emit('playerKilled', { killerId: socket.id, victimId: data.victimId });
+    }
+  });
+
   socket.on('shoot', (data) => {
     const player = players[socket.id];
     if (!player || player.ammo <= 0 || player.isReloading) return;
@@ -464,8 +502,9 @@ setInterval(() => {
       
       const dx = p.x - b.x;
       const dy = p.y - b.y;
+      const hitRadius = 400;
       
-      if (dx * dx + dy * dy < 225) {
+      if (dx * dx + dy * dy < hitRadius) {
         let damage = b.damage;
         
         if (b.class === 'sniper' && b.startX && b.startY) {
@@ -507,6 +546,22 @@ setInterval(() => {
 
   io.emit('update', { players, bullets });
 }, 16);
+
+setInterval(() => {
+  Object.keys(players).forEach(pid => {
+    const p = players[pid];
+    if (p) {
+      io.to(pid).emit('serverUpdate', {
+        x: p.x,
+        y: p.y,
+        health: p.health,
+        ammo: p.ammo,
+        reserve: p.reserve,
+        timestamp: Date.now()
+      });
+    }
+  });
+}, 100);
 
 server.listen(PORT, () => {
   console.log(`\n🎮 Server: http://localhost:${PORT}\n`);

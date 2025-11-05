@@ -148,6 +148,12 @@ socket.on('bulletHit', (bulletId) => {
     delete bullets[bulletId];
 });
 
+let serverPosition = { x: 0, y: 0, timestamp: 0 };
+
+socket.on('serverUpdate', (data) => {
+    serverPosition = data;
+});
+
 socket.on('update', (data) => {
     Object.keys(data.players).forEach(id => {
         if (id === myPlayerId) {
@@ -387,8 +393,9 @@ function handleMovement() {
             
             const dx = p.x - b.x;
             const dy = p.y - b.y;
+            const hitRadius = 400;
             
-            if (dx * dx + dy * dy < 225) {
+            if (dx * dx + dy * dy < hitRadius) {
                 delete bullets[bid];
                 hit = true;
             }
@@ -428,6 +435,26 @@ function handleMovement() {
 
 let lastShot = 0;
 let localBulletId = 0;
+
+function checkInstantHit(bullet) {
+    for (let i = 0; i < 50; i++) {
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
+        
+        if (collidesWithWall(bullet.x, bullet.y, 10)) return null;
+        
+        for (let pid in players) {
+            if (pid === myPlayerId) continue;
+            const p = players[pid];
+            const dx = p.x - bullet.x;
+            const dy = p.y - bullet.y;
+            if (dx * dx + dy * dy < 400) {
+                return p;
+            }
+        }
+    }
+    return null;
+}
 
 function reload() {
     const player = players[myPlayerId];
@@ -494,10 +521,20 @@ function shoot() {
             vx: Math.cos(bulletAngle) * bulletConfig.bulletSpeed,
             vy: Math.sin(bulletAngle) * bulletConfig.bulletSpeed,
             color: player.color,
-            class: myClass
+            class: myClass,
+            clientTime: Date.now()
         };
         
         bullets[localBullet.id] = localBullet;
+        
+        const hitPlayer = checkInstantHit(localBullet);
+        if (hitPlayer) {
+            socket.emit('clientHit', { 
+                victimId: hitPlayer.id, 
+                bulletAngle: bulletAngle,
+                timestamp: Date.now() - (currentPing / 2)
+            });
+        }
     }
 
     player.ammo--;
@@ -562,16 +599,26 @@ function draw() {
 
         if (isMe) {
             ctx.fillStyle = player.color;
-            ctx.globalAlpha = 0.3;
+            ctx.globalAlpha = 0.2;
             ctx.beginPath();
-            ctx.arc(player.x, player.y, 40, 0, Math.PI * 2);
+            ctx.arc(player.x, player.y, 50, 0, Math.PI * 2);
             ctx.fill();
+            ctx.globalAlpha = 1;
+            
+            ctx.strokeStyle = player.color;
+            ctx.globalAlpha = 0.4;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
             ctx.globalAlpha = 1;
         }
 
         ctx.fillStyle = player.color;
         ctx.beginPath();
-        ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+        ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
         ctx.fill();
 
         if (isMe) {
@@ -614,8 +661,8 @@ function draw() {
     Object.values(bullets).forEach(bullet => {
         ctx.fillStyle = bullet.color;
         
-        const bulletSize = bullet.class === 'sniper' ? 7 : bullet.class === 'shotgun' ? 4 : 5;
-        const glowSize = bullet.class === 'sniper' ? 15 : 10;
+        const bulletSize = bullet.class === 'sniper' ? 8 : bullet.class === 'shotgun' ? 5 : 6;
+        const glowSize = bullet.class === 'sniper' ? 20 : 12;
         
         ctx.shadowBlur = glowSize;
         ctx.shadowColor = bullet.color;
