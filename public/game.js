@@ -222,10 +222,14 @@ function updateLeaderboard() {
     
     leaderboardList.innerHTML = sortedPlayers.map((player, index) => {
         const isMe = player.id === myPlayerId;
+        const isBot = player.isBot;
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+        const displayName = isMe ? 'YOU' : isBot ? player.name : 'Player';
+        const icon = isBot ? '🤖 ' : '';
+        
         return `
             <div class="leaderboard-item ${!player.alive ? 'dead' : ''}" style="border-color: ${player.color}">
-                <span>${medal} ${isMe ? 'YOU' : 'Player'}</span>
+                <span>${medal} ${icon}${displayName}</span>
                 <span>${player.score} pts</span>
             </div>
         `;
