@@ -328,15 +328,32 @@ function handleMovement() {
     // Update local bullets client-side for smooth movement
     Object.keys(bullets).forEach(bid => {
         const b = bullets[bid];
-        if (b && b.vx && b.vy) {
-            b.x += b.vx;
-            b.y += b.vy;
-            
-            // Remove if out of bounds or hits wall
-            if (b.x < 0 || b.x > mapWidth || b.y < 0 || b.y > mapHeight || collidesWithWall(b.x, b.y, 10)) {
-                delete bullets[bid];
-            }
+        if (!b || !b.vx || !b.vy) return;
+        
+        b.x += b.vx;
+        b.y += b.vy;
+        
+        // Remove if out of bounds or hits wall
+        if (b.x < 0 || b.x > mapWidth || b.y < 0 || b.y > mapHeight || collidesWithWall(b.x, b.y, 10)) {
+            delete bullets[bid];
+            return;
         }
+        
+        // Check if bullet hits any player (client-side detection)
+        let hit = false;
+        Object.keys(players).forEach(pid => {
+            if (pid === b.ownerId) return; // Can't hit self
+            const p = players[pid];
+            if (!p) return;
+            
+            const dx = p.x - b.x;
+            const dy = p.y - b.y;
+            
+            if (dx * dx + dy * dy < 225) { // Hit radius
+                delete bullets[bid];
+                hit = true;
+            }
+        });
     });
 
     // Interpolate other players
