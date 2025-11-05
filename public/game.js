@@ -37,9 +37,9 @@ let classConfig = null;
 
 // Class configurations (must match server)
 const CLASS_CONFIGS = {
-    shotgun: { fireRate: 600, icon: '🔫' },
-    sniper: { fireRate: 800, icon: '🎯' },
-    rifle: { fireRate: 100, icon: '💥' }
+    shotgun: { fireRate: 500, icon: '🔫' },
+    sniper: { fireRate: 700, icon: '🎯' },
+    rifle: { fireRate: 80, icon: '💥' }
 };
 
 // Client-side collision detection
@@ -97,9 +97,12 @@ socket.on('playerLeft', (playerId) => {
     delete players[playerId];
 });
 
-// Bullets
+// Bullets from server - merge with local bullets
 socket.on('bulletFired', (bullet) => {
-    bullets[bullet.id] = bullet;
+    // Don't override if we already have this bullet locally
+    if (!bullets[bullet.id]) {
+        bullets[bullet.id] = bullet;
+    }
 });
 
 // FAST update handler - 60 FPS
@@ -122,7 +125,6 @@ socket.on('update', (data) => {
             }
             players[id].targetX = data.players[id].x;
             players[id].targetY = data.players[id].y;
-            // Don't update angle - not needed for other players
             players[id].health = data.players[id].health;
             players[id].ammo = data.players[id].ammo;
             players[id].color = data.players[id].color;
@@ -130,7 +132,13 @@ socket.on('update', (data) => {
         }
     });
     
-    bullets = data.bullets || {};
+    // Merge server bullets with local bullets (server is authoritative for hits)
+    // Keep local bullets for instant feedback, server bullets for accuracy
+    Object.keys(data.bullets || {}).forEach(bid => {
+        if (!bid.startsWith('local_')) {
+            bullets[bid] = data.bullets[bid];
+        }
+    });
 });
 
 // Update UI less frequently
@@ -321,7 +329,21 @@ function handleMovement() {
         y: player.y
     });
 
-    // Interpolate others
+    // Update local bullets client-side for smooth movement
+    Object.keys(bullets).forEach(bid => {
+        const b = bullets[bid];
+        if (b && b.vx && b.vy) {
+            b.x += b.vx;
+            b.y += b.vy;
+            
+            // Remove if out of bounds
+            if (b.x < 0 || b.x > mapWidth || b.y < 0 || b.y > mapHeight) {
+                delete bullets[bid];
+            }
+        }
+    });
+
+    // Interpolate other players
     Object.keys(players).forEach(id => {
         if (id === myPlayerId) return;
         const p = players[id];
@@ -346,6 +368,8 @@ function handleMovement() {
 }
 
 let lastShot = 0;
+let localBulletId = 0;
+
 function shoot() {
     if (!classConfig) return;
     
@@ -356,8 +380,46 @@ function shoot() {
     const player = players[myPlayerId];
     if (!player || player.ammo <= 0) return;
 
-    // Use player's current angle (already calculated)
-    socket.emit('shoot', { angle: player.angle });
+    const angle = player.angle;
+
+    // Instant client-side bullet prediction
+    const config = CLASS_CONFIGS[myClass];
+    const serverConfig = {
+        shotgun: { bulletSpeed: 25, bulletCount: 3, spread: 0.3 },
+        sniper: { bulletSpeed: 50, bulletCount: 1, spread: 0 },
+        rifle: { bulletSpeed: 30, bulletCount: 1, spread: 0.05 }
+    };
+    
+    const bulletConfig = serverConfig[myClass];
+    
+    for (let i = 0; i < bulletConfig.bulletCount; i++) {
+        let bulletAngle = angle;
+        
+        if (bulletConfig.bulletCount > 1) {
+            bulletAngle += (i - (bulletConfig.bulletCount - 1) / 2) * bulletConfig.spread;
+        } else if (bulletConfig.spread > 0) {
+            bulletAngle += (Math.random() - 0.5) * bulletConfig.spread;
+        }
+
+        // Create local bullet instantly
+        const localBullet = {
+            id: `local_${localBulletId++}`,
+            x: player.x,
+            y: player.y,
+            vx: Math.cos(bulletAngle) * bulletConfig.bulletSpeed,
+            vy: Math.sin(bulletAngle) * bulletConfig.bulletSpeed,
+            color: player.color,
+            class: myClass
+        };
+        
+        bullets[localBullet.id] = localBullet;
+    }
+
+    // Update ammo locally
+    player.ammo--;
+
+    // Send to server
+    socket.emit('shoot', { angle: angle });
 }
 
 function draw() {
