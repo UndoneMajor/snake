@@ -160,7 +160,7 @@ function updateBot(botId) {
   }
 
   const nearestPlayer = Object.values(players)
-    .filter(p => !p.isBot && p.id !== botId)
+    .filter(p => p.id !== botId)
     .sort((a, b) => {
       const distA = Math.hypot(a.x - bot.x, a.y - bot.y);
       const distB = Math.hypot(b.x - bot.x, b.y - bot.y);
