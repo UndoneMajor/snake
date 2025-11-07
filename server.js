@@ -158,6 +158,9 @@ function randomPosition() {
 }
 
 function spawnPowerUp() {
+  const realPlayers = Object.values(players).filter(p => !p.isBot).length;
+  if (realPlayers === 0) return;
+  
   const id = `powerup_${powerUpIdCounter++}`;
   powerUps[id] = {
     id,
@@ -168,7 +171,6 @@ function spawnPowerUp() {
 }
 
 setInterval(spawnPowerUp, 10000);
-for (let i = 0; i < 3; i++) spawnPowerUp();
 
 const BOT_NAMES = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'SIGMA', 'OMEGA', 'PRIME', 'NEXUS'];
 
@@ -334,12 +336,23 @@ function updateBot(botId) {
 }
 
 function spawnBots() {
-  for (let i = 0; i < MAX_BOTS; i++) {
+  const realPlayers = Object.values(players).filter(p => !p.isBot).length;
+  if (realPlayers === 0) return;
+  
+  const currentBots = Object.values(players).filter(p => p.isBot).length;
+  const botsNeeded = MAX_BOTS - currentBots;
+  
+  for (let i = 0; i < botsNeeded; i++) {
     createBot();
   }
 }
 
-setTimeout(spawnBots, 3000);
+setInterval(() => {
+  const realPlayers = Object.values(players).filter(p => !p.isBot).length;
+  if (realPlayers > 0) {
+    spawnBots();
+  }
+}, 5000);
 
 function collidesWithWall(x, y, size = 10) {
   const halfSize = size / 2;
@@ -572,8 +585,26 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    console.log(`👋 Disconnect: ${socket.id}`);
     delete players[socket.id];
     io.emit('playerLeft', socket.id);
+    
+    const realPlayers = Object.values(players).filter(p => !p.isBot).length;
+    if (realPlayers === 0) {
+      console.log('No real players left - cleaning up...');
+      Object.keys(players).forEach(pid => {
+        if (players[pid].isBot) {
+          delete players[pid];
+        }
+      });
+      Object.keys(powerUps).forEach(puid => {
+        delete powerUps[puid];
+      });
+      Object.keys(bullets).forEach(bid => {
+        delete bullets[bid];
+      });
+      console.log('Game cleaned up!');
+    }
   });
 });
 
